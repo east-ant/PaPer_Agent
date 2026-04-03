@@ -1,0 +1,56 @@
+import pymysql
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def get_connection():
+    return pymysql.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        charset="utf8mb4"
+    )
+
+def init_db():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS papers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            arxiv_id VARCHAR(50) UNIQUE,
+            title VARCHAR(500),
+            abstract TEXT,
+            summary TEXT,
+            category VARCHAR(50),
+            published DATETIME,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_paper(arxiv_id: str, title: str, abstract: str, summary: str, category: str = None):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT IGNORE INTO papers (arxiv_id, title, abstract, summary, category)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (arxiv_id, title, abstract, summary, category))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"저장 실패: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_papers():
+    conn = get_connection()
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+    cursor.execute("SELECT * FROM papers ORDER BY created_at DESC")
+    result = cursor.fetchall()
+    conn.close()
+    return result
