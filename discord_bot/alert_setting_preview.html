@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alert Setting Preview</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;background:#0f0f13;">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useState } = React;
+
+    const KEYWORDS = ["AI", "NLP", "CV", "Robotics", "ML", "LLM"];
+    const BOT_INVITE_URL = "https://discord.com/oauth2/authorize?client_id=1490910406485475449&permissions=85056&integration_type=0&scope=bot";
+    const API_BASE_URL = (() => {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = params.get("api");
+      if (fromQuery) {
+        window.localStorage.setItem("alert_api_base_url", fromQuery);
+        return fromQuery;
+      }
+      return window.localStorage.getItem("alert_api_base_url") || "http://127.0.0.1:8000";
+    })();
+
+    function AlertSetting() {
+      const [step, setStep] = useState("select");
+      const [selectedKeywords, setSelectedKeywords] = useState([]);
+      const [includeSummary, setIncludeSummary] = useState(false);
+      const [includeCategory, setIncludeCategory] = useState(false);
+      const [alertMode, setAlertMode] = useState("daily");
+      const [dailyTime, setDailyTime] = useState("09:00");
+      const [saving, setSaving] = useState(false);
+      const [loadingChannels, setLoadingChannels] = useState(false);
+      const [channels, setChannels] = useState([]);
+      const [selectedChannelKey, setSelectedChannelKey] = useState("");
+      const [alertId, setAlertId] = useState("");
+      const [autoAlerts, setAutoAlerts] = useState([]);
+      const [loadingAutoAlerts, setLoadingAutoAlerts] = useState(false);
+      const [errorMessage, setErrorMessage] = useState("");
+      const [oauthSessionId, setOauthSessionId] = useState("");
+      const [oauthUser, setOauthUser] = useState(null);
+
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const fromQuery = params.get("auth_session");
+        const fromStorage = window.localStorage.getItem("discord_auth_session") || "";
+        const sessionId = fromQuery || fromStorage;
+        if (!sessionId) {
+          return;
+        }
+
+        if (fromQuery) {
+          window.localStorage.setItem("discord_auth_session", fromQuery);
+          params.delete("auth_session");
+          const nextQuery = params.toString();
+          const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+          window.history.replaceState({}, "", nextUrl);
+        }
+
+        setOauthSessionId(sessionId);
+        fetch(`${API_BASE_URL}/api/auth/session/${sessionId}`)
+          .then((res) => {
+            if (!res.ok) throw new Error("로그인 세션 조회 실패");
+            return res.json();
+          })
+          .then((data) => setOauthUser(data?.user || null))
+          .catch(() => {
+            setOauthSessionId("");
+            setOauthUser(null);
+            window.localStorage.removeItem("discord_auth_session");
+          });
+      }, []);
+
+      const toggleKeyword = (keyword) => {
+        setSelectedKeywords((prev) =>
+          prev.includes(keyword) ? prev.filter((k) => k !== keyword) : [...prev, keyword]
+        );
+      };
+
+      const savePreferences = async () => {
+        if (selectedKeywords.length === 0) {
+          setErrorMessage("키워드를 1개 이상 선택해 주세요.");
+          return false;
+        }
+
+        setSaving(true);
+        setErrorMessage("");
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/alert-preferences`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              keywords: selectedKeywords,
+              include_summary: includeSummary,
+              include_category: includeCategory,
+              alert_mode: alertMode,
+              daily_time: dailyTime,
+              discord_user_id: oauthUser?.id || null,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`설정 저장 실패 (${response.status})`);
+          }
+          const data = await response.json();
+          const savedAlertId = data?.alert_id || "";
+          if (savedAlertId) {
+            setAlertId(savedAlertId);
+          }
+          return savedAlertId;
+        } catch (error) {
+          setErrorMessage(error?.message || "설정 저장 중 오류가 발생했습니다.");
+          return "";
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      const handleDiscordLogin = async () => {
+        setSaving(true);
+        setErrorMessage("");
+        try {
+          const redirectBack = `${window.location.origin}${window.location.pathname}?api=${encodeURIComponent(API_BASE_URL)}`;
+          const response = await fetch(`${API_BASE_URL}/api/auth/discord/login-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ redirect_back: redirectBack }),
+          });
+          if (!response.ok) throw new Error(`로그인 URL 생성 실패 (${response.status})`);
+          const data = await response.json();
+          if (!data?.url) throw new Error("로그인 URL이 비어 있습니다.");
+          window.location.href = data.url;
+        } catch (error) {
+          setErrorMessage(error?.message || "디스코드 로그인 시작 실패");
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      const handleInstall = async () => {
+        const savedAlertId = await savePreferences();
+        if (!savedAlertId) return;
+        window.open(BOT_INVITE_URL, "_blank");
+        setStep("done");
+      };
+
+      const handleAlreadyInstalled = async () => {
+        const savedAlertId = await savePreferences();
+        if (!savedAlertId) return;
+
+        setLoadingChannels(true);
+        setErrorMessage("");
+        try {
+          if (!oauthSessionId) throw new Error("디스코드 로그인이 필요합니다.");
+          const response = await fetch(`${API_BASE_URL}/api/bot/channels?session_id=${encodeURIComponent(oauthSessionId)}`);
+          if (!response.ok) throw new Error(`채널 목록 조회 실패 (${response.status})`);
+          const data = await response.json();
+          const rows = data?.channels || [];
+          setChannels(rows);
+          if (rows.length > 0) {
+            setSelectedChannelKey(`${rows[0].guild_id}:${rows[0].channel_id}`);
+          }
+          setStep("channel");
+        } catch (error) {
+          setErrorMessage(error?.message || "채널 목록 조회 오류");
+        } finally {
+          setLoadingChannels(false);
+        }
+      };
+
+      const handleBindChannel = async () => {
+        if (!alertId || !selectedChannelKey) {
+          setErrorMessage("채널 선택 정보가 없습니다.");
+          return;
+        }
+        const [g, c] = selectedChannelKey.split(":");
+        setSaving(true);
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/alerts/bind-channel`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ alert_id: alertId, guild_id: g, channel_id: c }),
+          });
+          if (!response.ok) throw new Error(`채널 저장 실패 (${response.status})`);
+          setStep("done");
+        } catch (error) {
+          setErrorMessage(error?.message || "채널 저장 실패");
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      const fetchAutoAlerts = async () => {
+        setLoadingAutoAlerts(true);
+        setErrorMessage("");
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/auto-alerts`);
+          if (!response.ok) throw new Error(`자동알림 조회 실패 (${response.status})`);
+          const data = await response.json();
+          setAutoAlerts(data?.alerts || []);
+        } catch (error) {
+          setErrorMessage(error?.message || "자동알림 목록 조회 실패");
+        } finally {
+          setLoadingAutoAlerts(false);
+        }
+      };
+
+      const deleteAutoAlert = async (targetAlertId) => {
+        setSaving(true);
+        setErrorMessage("");
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/auto-alerts/${targetAlertId}`, { method: "DELETE" });
+          if (!response.ok) throw new Error(`자동알림 삭제 실패 (${response.status})`);
+          await fetchAutoAlerts();
+        } catch (error) {
+          setErrorMessage(error?.message || "자동알림 삭제 실패");
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#0f0f13", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif", padding: "24px" }}>
+          <div style={{ width: "100%", maxWidth: 480, background: "#18181f", borderRadius: 20, border: "1px solid #2a2a35", padding: "36px 32px" }}>
+            <h2 style={{ color: "#f0f0f5", marginTop: 0 }}>Discord 알림 설정</h2>
+
+            {step === "select" && (
+              <>
+                <p style={{ color: "#8888a0", fontSize: 14 }}>키워드 선택</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                  {KEYWORDS.map((k) => (
+                    <button key={k} onClick={() => toggleKeyword(k)} style={{ padding: "8px 12px", borderRadius: 99, border: "1px solid #2a2a35", background: selectedKeywords.includes(k) ? "#5865F220" : "transparent", color: selectedKeywords.includes(k) ? "#7289da" : "#ccc", cursor: "pointer" }}>
+                      {k}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ color: "#c0c0d0", fontSize: 14 }}>
+                    <input type="checkbox" checked={includeSummary} onChange={(e) => setIncludeSummary(e.target.checked)} /> 요약 포함
+                  </label>
+                  <br />
+                  <label style={{ color: "#c0c0d0", fontSize: 14 }}>
+                    <input type="checkbox" checked={includeCategory} onChange={(e) => setIncludeCategory(e.target.checked)} /> 카테고리 포함
+                  </label>
+                </div>
+
+                <div style={{ marginBottom: 16, color: "#c0c0d0", fontSize: 14 }}>
+                  <label style={{ display: "block", marginBottom: 6 }}>
+                    <input type="radio" name="mode" value="daily" checked={alertMode === "daily"} onChange={() => setAlertMode("daily")} /> 매일 지정 시각
+                  </label>
+                  <label style={{ display: "block", marginBottom: 8 }}>
+                    <input type="radio" name="mode" value="once_now" checked={alertMode === "once_now"} onChange={() => setAlertMode("once_now")} /> 지금 1회
+                  </label>
+                  {alertMode === "daily" && (
+                    <input
+                      type="time"
+                      value={dailyTime}
+                      onChange={(e) => setDailyTime(e.target.value)}
+                      style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: "1px solid #2a2a35", background: "#111117", color: "#f0f0f5" }}
+                    />
+                  )}
+                </div>
+
+                <button onClick={() => setStep("login")} disabled={selectedKeywords.length === 0} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: selectedKeywords.length === 0 ? "#2a2a35" : "#5865F2", color: "#fff", cursor: selectedKeywords.length === 0 ? "not-allowed" : "pointer" }}>
+                  다음
+                </button>
+              </>
+            )}
+
+            {step === "login" && (
+              <>
+                <p style={{ color: "#8888a0", fontSize: 13, marginTop: 0 }}>디스코드 OAuth 로그인이 필요합니다. 로그인한 사용자 기준으로 채널 목록을 제한합니다.</p>
+                {oauthUser && (
+                  <p style={{ fontSize: 12, color: "#95f0a0", marginTop: 0, marginBottom: 8 }}>
+                    로그인됨: {oauthUser.global_name || oauthUser.username} ({oauthUser.id})
+                  </p>
+                )}
+                {errorMessage && <p style={{ color: "#ff8f8f", fontSize: 12 }}>{errorMessage}</p>}
+                <button onClick={handleDiscordLogin} disabled={saving} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "#5865F2", color: "#fff", marginBottom: 10 }}>
+                  {saving ? "로그인 연결 중..." : oauthUser ? "다시 로그인" : "디스코드 로그인"}
+                </button>
+                <button onClick={() => setStep("install")} disabled={!oauthUser} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid #2a2a35", background: "transparent", color: !oauthUser ? "#666" : "#ddd" }}>
+                  로그인 완료, 다음
+                </button>
+              </>
+            )}
+
+            {step === "install" && (
+              <>
+                <p style={{ color: "#8888a0", fontSize: 13, marginTop: 0 }}>디스코드 봇으로 알림을 받으려면 봇 설치가 필요합니다.</p>
+                {errorMessage && <p style={{ color: "#ff8f8f", fontSize: 12 }}>{errorMessage}</p>}
+                <button onClick={handleInstall} disabled={saving} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: saving ? "#2a2a35" : "#5865F2", color: "#fff" }}>
+                  {saving ? "저장 중..." : "설정 저장 후 디스코드 봇 설치하기"}
+                </button>
+                <button onClick={handleAlreadyInstalled} disabled={saving || loadingChannels} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid #2a2a35", background: "transparent", color: "#ddd", marginTop: 10 }}>
+                  {loadingChannels ? "채널 불러오는 중..." : "이미 봇 설치되어 있습니다"}
+                </button>
+              </>
+            )}
+
+            {step === "channel" && (
+              <>
+                <p style={{ color: "#8888a0", fontSize: 13, marginTop: 0 }}>알림 보낼 채널을 선택하세요.</p>
+                {channels.length === 0 ? (
+                  <p style={{ color: "#ff8f8f", fontSize: 12 }}>표시할 채널이 없습니다. 봇 설치 상태를 확인하세요.</p>
+                ) : (
+                  <select value={selectedChannelKey} onChange={(e) => setSelectedChannelKey(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#111117", color: "#fff", border: "1px solid #2a2a35", marginBottom: 10 }}>
+                    {channels.map((row) => (
+                      <option key={`${row.guild_id}:${row.channel_id}`} value={`${row.guild_id}:${row.channel_id}`}>
+                        {row.guild_name} / #{row.channel_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {errorMessage && <p style={{ color: "#ff8f8f", fontSize: 12 }}>{errorMessage}</p>}
+                <button onClick={handleBindChannel} disabled={saving || channels.length === 0} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: saving || channels.length === 0 ? "#2a2a35" : "#5865F2", color: "#fff" }}>
+                  {saving ? "저장 중..." : "선택 채널로 저장"}
+                </button>
+              </>
+            )}
+
+            {step === "done" && (
+              <div>
+                <p style={{ color: "#95f0a0" }}>
+                  알림 설정 완료되었습니다. {alertMode === "daily" ? `매일 ${dailyTime}` : "지금 1회"} 모드가 저장되었습니다.
+                </p>
+                <button
+                  onClick={fetchAutoAlerts}
+                  disabled={loadingAutoAlerts}
+                  style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #2a2a35", background: "transparent", color: "#ddd", marginBottom: 8 }}
+                >
+                  {loadingAutoAlerts ? "불러오는 중..." : "저장된 자동알림 목록 보기"}
+                </button>
+
+                {autoAlerts.length > 0 && (
+                  <div style={{ marginBottom: 8, textAlign: "left" }}>
+                    <p style={{ fontSize: 12, color: "#8888a0", margin: "0 0 6px" }}>총 {autoAlerts.length}개 저장됨</p>
+                    <div style={{ maxHeight: 240, overflowY: "auto", paddingRight: 4 }}>
+                      {autoAlerts.map((row) => (
+                        <div key={row.alert_id} style={{ border: "1px solid #2a2a35", borderRadius: 8, padding: "8px 10px", marginBottom: 6, background: "#111117" }}>
+                          <div style={{ fontSize: 12, color: "#c0c0d0" }}>ID: {row.alert_id}</div>
+                          <div style={{ fontSize: 12, color: "#8888a0", marginBottom: 6 }}>mode: {row.alert_mode} / time: {row.daily_time} / status: {row.status}</div>
+                          <button onClick={() => deleteAutoAlert(row.alert_id)} disabled={saving} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #3a2a2a", background: "#2a1515", color: "#ffb3b3", fontSize: 12 }}>
+                            이 알림 삭제
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button onClick={() => setStep("select")} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1px solid #2a2a35", background: "transparent", color: "#ddd" }}>다시 설정</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<AlertSetting />);
+  </script>
+</body>
+</html>
