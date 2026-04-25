@@ -8,13 +8,13 @@ from api_down import (
 )
 from config import settings
 from pydantic import BaseModel
-
+from agent import analyze_paper, is_relevant, translate_abstract
 app = FastAPI()
 
 class SearchRequest(BaseModel):
     keyword: str
     limit: int = 10
-    withSummary: bool = False
+    withSummary: bool = False  # "none" | "translate" | "analyze"
 
 
 # 프론트엔드(localhost:5173)에서 호출 가능하도록 CORS 허용
@@ -36,6 +36,8 @@ def root():
 # ✅ 프론트엔드 papers.js가 호출하는 엔드포인트
 @app.post("/search")
 def search(body: SearchRequest):
+    from agent import translate_abstract, analyze_paper
+
     papers = []
     papers += arxiv_search(body.keyword, body.limit)
     papers += crossref_search(body.keyword, body.limit)
@@ -45,13 +47,18 @@ def search(body: SearchRequest):
     papers = remove_duplicates(papers)
     papers = sort_papers_by_recency(papers)
 
-    # 프론트가 기대하는 형식으로 변환
     result = []
     for i, p in enumerate(papers[:body.limit]):
         authors = p.get("authors", [])
         journal = p.get("venue") or p.get("journal") or p.get("source") or ""
         if isinstance(journal, dict):
             journal = journal.get("name", "")
+
+        abstract = p.get("summary") or p.get("abstract") or ""
+
+        summary = ""
+        if body.withSummary:
+            summary = translate_abstract(abstract)
 
         result.append({
             "id": p.get("paperId") or p.get("id") or str(i),
@@ -60,9 +67,16 @@ def search(body: SearchRequest):
             "year": str(p.get("published") or p.get("year") or "")[:4],
             "journal": journal,
             "citations": p.get("citationCount") or 0,
-            "summary": p.get("summary") or "",
+            "summary": summary,
             "link": p.get("link") or "",
         })
+        save_paper(
+        arxiv_id=p.get("paperId") or p.get("id") or str(i),
+        title=p.get("title") or "제목 없음",
+        abstract=abstract,
+        summary=summary,
+        category=str(p.get("categories", [""])[0]) if p.get("categories") else None
+        )
 
     return {"papers": result}
 

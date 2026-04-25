@@ -20,6 +20,7 @@ pip install fastapi uvicorn python-dotenv feedparser numpy pypdfium2 rapidocr-on
 
 ### 4. 실행
 ```bash
+.\venv\Scripts\activate
 uvicorn main:app --reload
 ```
 서버가 `http://localhost:8000` 에서 실행됩니다.

@@ -302,7 +302,8 @@ def semantic_pdf_from_link(link: str) -> str:
     api = (
         "https://api.semanticscholar.org/graph/v1/paper/"
         + paper_id
-        + "?fields=title,url,openAccessPdf,externalIds"
+        + "?fields=title,abstract,year,authors,url,fieldsOfStudy,s2FieldsOfStudy,venue,journal,publicationTypes,citationCount,influentialCitationCount,openAccessPdf,externalIds"
+        # 기존+ "?fields=title,url,openAccessPdf,externalIds"
     )
     data, _ = request_bytes(api)
     obj = json.loads(data.decode("utf-8", errors="ignore"))
@@ -418,8 +419,7 @@ def semantic_search(query, api_key, max_results):
     params = urllib.parse.urlencode({
         "query": query,
         "limit": max_results,
-        "fields": "title,year,authors,url,fieldsOfStudy,s2FieldsOfStudy,venue,journal,publicationTypes,citationCount,influentialCitationCount,openAccessPdf,externalIds",
-    })
+        "fields": "title,abstract,year,authors,url,fieldsOfStudy,s2FieldsOfStudy,venue,journal,publicationTypes,citationCount,influentialCitationCount,openAccessPdf,externalIds",    })
     headers = {"x-api-key": api_key} if api_key and "your_" not in api_key else {}
     request = urllib.request.Request(f"{url}?{params}", headers=headers)
     try:
@@ -443,6 +443,7 @@ def semantic_search(query, api_key, max_results):
             results.append({
                 "source": "Semantic Scholar",
                 "title": item.get("title"),
+                "summary": item.get("abstract"),
                 "authors": [author.get("name") for author in item.get("authors", [])],
                 "published": str(item.get("year", "")),
                 "link": item.get("url"),
@@ -495,6 +496,7 @@ def core_search(query, api_key, max_results):
             results.append({
                 "source": "CORE",
                 "title": item.get("title"),
+                "summary": item.get("abstract"),
                 "authors": [author.get("name") for author in item.get("authors", []) if author.get("name")],
                 "published": item.get("publishedDate"),
                 "link": item.get("downloadUrl") or item.get("doi"),
