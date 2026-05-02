@@ -1,15 +1,20 @@
 from fastapi import FastAPI
+
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, save_paper, get_papers
-from agent import analyze_paper, is_relevant
-from api_down import (
+from api_get import (
     arxiv_search, semantic_search, core_search, crossref_search,
     remove_duplicates, sort_papers_by_recency
 )
+from api_get import resolve_pdf_candidate
+from agent import analyze_paper, is_relevant, translate_abstract, read_paper_pdf
 from config import settings
 from pydantic import BaseModel
-from agent import analyze_paper, is_relevant, translate_abstract
 app = FastAPI()
+
+class PdfRequest(BaseModel):
+    link: str
+    source: str
 
 class SearchRequest(BaseModel):
     keyword: str
@@ -141,3 +146,18 @@ def collect(keyword: str, max_results: int = 10):
 @app.get("/papers")
 def papers():
     return get_papers()
+
+@app.post("/paper/pdf")
+def get_paper_pdf(body: PdfRequest):
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    try:
+        paper = {"link": body.link, "source": body.source}
+        pdf_url = resolve_pdf_candidate(paper)
+        text = read_paper_pdf(pdf_url)
+        if not text:
+            return {"success": False, "text": "", "summary": ""}
+        summary = translate_abstract(text[:3000])
+        return {"success": True, "text": text[:3000], "summary": summary}
+    except Exception as e:
+        return {"success": False, "text": "", "summary": str(e)}
