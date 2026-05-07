@@ -7,7 +7,7 @@ from api_get import (
     remove_duplicates, sort_papers_by_recency
 )
 from api_get import resolve_pdf_candidate
-from agent import analyze_paper, is_relevant, translate_abstract, read_paper_pdf
+from agent import analyze_paper, is_relevant, translate_abstract, read_paper_pdf, summarize_body, summarize_full
 from config import settings
 from pydantic import BaseModel
 app = FastAPI()
@@ -15,11 +15,38 @@ app = FastAPI()
 class PdfRequest(BaseModel):
     link: str
     source: str
+    summaryMode: str = "abstract"
+
+@app.post("/paper/pdf")
+def get_paper_pdf(body: PdfRequest):
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    try:
+        paper = {"link": body.link, "source": body.source}
+
+        if body.summaryMode == "abstract":
+            # PDF 안 읽고 초록만 번역 (초록은 /search에서 이미 가져옴)
+            # 여기선 link에서 초록을 못 가져오므로 프론트에서 abstract도 같이 보내줘야 함
+            summary = translate_abstract(body.abstract)
+
+        elif body.summaryMode == "body":
+            pdf_url = resolve_pdf_candidate(paper)
+            text = read_paper_pdf(pdf_url, max_pages=1)
+            summary = summarize_body(body.abstract, text)
+
+        elif body.summaryMode == "full":
+            pdf_url = resolve_pdf_candidate(paper)
+            text = read_paper_pdf(pdf_url)
+            summary = summarize_full(text)
+
+        return {"success": True, "summary": summary}
+    except Exception as e:
+        return {"success": False, "summary": str(e)}
 
 class SearchRequest(BaseModel):
     keyword: str
     limit: int = 10
-    withSummary: bool = False  # "none" | "translate" | "analyze"
+    summaryMode: str = "abstract"  # "abstract" | "body" | "full"
 
 
 # 프론트엔드(localhost:5173)에서 호출 가능하도록 CORS 허용
@@ -62,8 +89,26 @@ def search(body: SearchRequest):
         abstract = p.get("summary") or p.get("abstract") or ""
 
         summary = ""
-        if body.withSummary:
+        if body.summaryMode == "abstract":
             summary = translate_abstract(abstract)
+
+        elif body.summaryMode == "body":
+            try:
+                paper = {"link": p.get("link") or "", "source": p.get("source") or ""}
+                pdf_url = resolve_pdf_candidate(paper)
+                body_text = read_paper_pdf(pdf_url)
+                summary = summarize_body(abstract, body_text)
+            except:
+                summary = translate_abstract(abstract)
+
+        elif body.summaryMode == "full":
+            try:
+                paper = {"link": p.get("link") or "", "source": p.get("source") or ""}
+                pdf_url = resolve_pdf_candidate(paper)
+                full_text = read_paper_pdf(pdf_url)
+                summary = summarize_full(full_text)
+            except:
+                summary = translate_abstract(abstract)
 
         result.append({
             "id": p.get("paperId") or p.get("id") or str(i),
