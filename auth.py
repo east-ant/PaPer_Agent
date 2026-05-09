@@ -1,6 +1,7 @@
 # auth.py
 import urllib.parse
 import requests
+import os
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
-REDIRECT_URI = "http://localhost:8000/auth/google/callback"
+# REDIRECT_URI = "http://localhost:8000/auth/google/callback"
+REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 

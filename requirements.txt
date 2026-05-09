@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-dotenv
+pymysql
+feedparser
+numpy
+pypdfium2
+rapidocr-onnxruntime
+requests
+langchain
+langchain-openai
+openai
+pypdf
+python-jose[cryptography]
