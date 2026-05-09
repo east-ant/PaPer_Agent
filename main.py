@@ -1,55 +1,19 @@
-from fastapi import FastAPI
-
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
 from database import init_db, save_paper, get_papers
 from api_get import (
     arxiv_search, semantic_search, core_search, crossref_search,
-    remove_duplicates, sort_papers_by_recency
+    remove_duplicates, sort_papers_by_recency, resolve_pdf_candidate,
 )
-from api_get import resolve_pdf_candidate
 from agent import analyze_paper, is_relevant, translate_abstract, read_paper_pdf, summarize_body, summarize_full
 from config import settings
-from pydantic import BaseModel
+from auth import router as auth_router, decode_jwt
+
 app = FastAPI()
+app.include_router(auth_router)
 
-class PdfRequest(BaseModel):
-    link: str
-    source: str
-    summaryMode: str = "abstract"
-
-@app.post("/paper/pdf")
-def get_paper_pdf(body: PdfRequest):
-    import ssl
-    ssl._create_default_https_context = ssl._create_unverified_context
-    try:
-        paper = {"link": body.link, "source": body.source}
-
-        if body.summaryMode == "abstract":
-            # PDF 안 읽고 초록만 번역 (초록은 /search에서 이미 가져옴)
-            # 여기선 link에서 초록을 못 가져오므로 프론트에서 abstract도 같이 보내줘야 함
-            summary = translate_abstract(body.abstract)
-
-        elif body.summaryMode == "body":
-            pdf_url = resolve_pdf_candidate(paper)
-            text = read_paper_pdf(pdf_url, max_pages=1)
-            summary = summarize_body(body.abstract, text)
-
-        elif body.summaryMode == "full":
-            pdf_url = resolve_pdf_candidate(paper)
-            text = read_paper_pdf(pdf_url)
-            summary = summarize_full(text)
-
-        return {"success": True, "summary": summary}
-    except Exception as e:
-        return {"success": False, "summary": str(e)}
-
-class SearchRequest(BaseModel):
-    keyword: str
-    limit: int = 10
-    summaryMode: str = "abstract"  # "abstract" | "body" | "full"
-
-
-# 프론트엔드(localhost:5173)에서 호출 가능하도록 CORS 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -57,18 +21,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+class SearchRequest(BaseModel):
+    keyword: str
+    limit: int = 10
+    summaryMode: str = "abstract"
+
+
+class PdfRequest(BaseModel):
+    link: str
+    source: str
+    abstract: str = ""
+    summaryMode: str = "abstract"
+
+
+def get_email_from_token(authorization: Optional[str]) -> str:
+    """Authorization: Bearer <token> 헤더에서 email 추출"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="토큰이 없습니다.")
+    token = authorization.split(" ", 1)[1]
+    payload = decode_jwt(token)
+    return payload["email"]
+
+
 @app.on_event("startup")
 def startup():
     init_db()
+
 
 @app.get("/")
 def root():
     return {"message": "Paper Agent 서버 정상 동작"}
 
-# ✅ 프론트엔드 papers.js가 호출하는 엔드포인트
+
 @app.post("/search")
-def search(body: SearchRequest):
-    from agent import translate_abstract, analyze_paper
+def search(body: SearchRequest, authorization: Optional[str] = Header(None)):
+    email = get_email_from_token(authorization)
 
     papers = []
     papers += arxiv_search(body.keyword, body.limit)
@@ -96,7 +84,7 @@ def search(body: SearchRequest):
             try:
                 paper = {"link": p.get("link") or "", "source": p.get("source") or ""}
                 pdf_url = resolve_pdf_candidate(paper)
-                body_text = read_paper_pdf(pdf_url)
+                body_text = read_paper_pdf(pdf_url, max_pages=1)
                 summary = summarize_body(abstract, body_text)
             except:
                 summary = translate_abstract(abstract)
@@ -121,14 +109,16 @@ def search(body: SearchRequest):
             "link": p.get("link") or "",
         })
         save_paper(
-        arxiv_id=p.get("paperId") or p.get("id") or str(i),
-        title=p.get("title") or "제목 없음",
-        abstract=abstract,
-        summary=summary,
-        category=str(p.get("categories", [""])[0]) if p.get("categories") else None
+            arxiv_id=p.get("paperId") or p.get("id") or str(i),
+            title=p.get("title") or "제목 없음",
+            abstract=abstract,
+            summary=summary,
+            user_email=email,
+            category=str(p.get("categories", [""])[0]) if p.get("categories") else None,
         )
 
     return {"papers": result}
+
 
 @app.post("/analyze")
 def analyze(title: str, abstract: str, keyword: str, arxiv_id: str = "test-001"):
@@ -140,14 +130,18 @@ def analyze(title: str, abstract: str, keyword: str, arxiv_id: str = "test-001")
             arxiv_id=arxiv_id,
             title=title,
             abstract=abstract,
-            summary=result
+            summary=result,
+            user_email="anonymous",
         )
         return {"relevant": True, "summary": result, "saved": saved}
 
     return {"relevant": False, "summary": "관련 없는 논문", "saved": False}
 
+
 @app.post("/collect")
-def collect(keyword: str, max_results: int = 10):
+def collect(keyword: str, max_results: int = 10, authorization: Optional[str] = Header(None)):
+    email = get_email_from_token(authorization)
+
     papers = []
     papers += arxiv_search(keyword, max_results)
     papers += crossref_search(keyword, max_results)
@@ -176,7 +170,8 @@ def collect(keyword: str, max_results: int = 10):
                 title=title,
                 abstract=abstract,
                 summary=result,
-                category=str(paper.get("categories", [""])[0]) if paper.get("categories") else None
+                user_email=email,
+                category=str(paper.get("categories", [""])[0]) if paper.get("categories") else None,
             )
             if saved:
                 saved_count += 1
@@ -185,12 +180,15 @@ def collect(keyword: str, max_results: int = 10):
         "keyword": keyword,
         "total_collected": len(papers),
         "relevant_count": relevant_count,
-        "saved_count": saved_count
+        "saved_count": saved_count,
     }
 
+
 @app.get("/papers")
-def papers():
-    return get_papers()
+def papers(authorization: Optional[str] = Header(None)):
+    email = get_email_from_token(authorization)
+    return get_papers(email)
+
 
 @app.post("/paper/pdf")
 def get_paper_pdf(body: PdfRequest):
@@ -198,11 +196,24 @@ def get_paper_pdf(body: PdfRequest):
     ssl._create_default_https_context = ssl._create_unverified_context
     try:
         paper = {"link": body.link, "source": body.source}
+
+        if body.summaryMode == "abstract":
+            summary = translate_abstract(body.abstract)
+            return {"success": True, "summary": summary}
+
         pdf_url = resolve_pdf_candidate(paper)
-        text = read_paper_pdf(pdf_url)
-        if not text:
-            return {"success": False, "text": "", "summary": ""}
-        summary = translate_abstract(text[:3000])
-        return {"success": True, "text": text[:3000], "summary": summary}
+
+        if body.summaryMode == "body":
+            text = read_paper_pdf(pdf_url, max_pages=1)
+            if not text:
+                return {"success": False, "summary": ""}
+            summary = summarize_body(body.abstract, text)
+        else:
+            text = read_paper_pdf(pdf_url)
+            if not text:
+                return {"success": False, "summary": ""}
+            summary = summarize_full(text)
+
+        return {"success": True, "summary": summary}
     except Exception as e:
-        return {"success": False, "text": "", "summary": str(e)}
+        return {"success": False, "summary": str(e)}
