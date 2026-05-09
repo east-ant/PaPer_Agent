@@ -1,21 +1,32 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, Mail, Calendar, LogOut } from 'lucide-react'
 
-// 백엔드 연결 시 이 데이터는 /auth/me API 응답으로 대체됩니다
-const MOCK_USER = {
-  name:      '유저이름',
-  email:     '123@gmail.com',
-  joinedAt:  '2024년 1월',
-  provider:  'Google',
-}
-
 export default function ProfilePage() {
   const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('ppa_token')
+    if (!token) return
+    fetch(`http://localhost:8000/auth/me?token=${token}`)
+      .then(res => res.json())
+      .then(data => setUser(data))
+  }, [])
 
   function handleLogout() {
     localStorage.removeItem('ppa_logged_in')
+    localStorage.removeItem('ppa_token')
     navigate('/login')
   }
+
+  if (!user) return null
+
+  const rows = [
+    { icon: User,     label: '이름',   value: user.name },
+    { icon: Mail,     label: '이메일', value: user.email },
+    { icon: Calendar, label: '가입일', value: 'Google 계정' },
+  ]
 
   return (
     <main className="flex-1 p-4">
@@ -26,18 +37,25 @@ export default function ProfilePage() {
           className="rounded-xl p-5 text-center"
           style={{ background: 'var(--bg-card)', border: 'var(--border-width) solid var(--border)' }}
         >
-          {/* Avatar */}
-          <div
-            className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-xl font-medium text-white"
-            style={{ background: 'var(--accent)' }}
-          >
-            {MOCK_USER.name.charAt(0)}
-          </div>
+          {user.picture ? (
+            <img
+              src={user.picture}
+              alt="프로필"
+              className="mx-auto mb-3 h-14 w-14 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-xl font-medium text-white"
+              style={{ background: 'var(--accent)' }}
+            >
+              {user.name?.charAt(0)}
+            </div>
+          )}
           <p className="text-base font-medium" style={{ letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>
-            {MOCK_USER.name}
+            {user.name}
           </p>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {MOCK_USER.email}
+            {user.email}
           </p>
         </div>
 
@@ -46,18 +64,10 @@ export default function ProfilePage() {
           className="overflow-hidden rounded-xl"
           style={{ background: 'var(--bg-card)', border: 'var(--border-width) solid var(--border)' }}
         >
-          <div
-            className="px-4 py-3"
-            style={{ borderBottom: 'var(--border-width) solid var(--border)' }}
-          >
+          <div className="px-4 py-3" style={{ borderBottom: 'var(--border-width) solid var(--border)' }}>
             <h2 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>계정 정보</h2>
           </div>
-
-          {[
-            { icon: User,     label: '이름',      value: MOCK_USER.name },
-            { icon: Mail,     label: '이메일',    value: MOCK_USER.email },
-            { icon: Calendar, label: '가입일',    value: MOCK_USER.joinedAt },
-          ].map(({ icon: Icon, label, value }, i) => (
+          {rows.map(({ icon: Icon, label, value }, i) => (
             <div
               key={label}
               className="flex items-center gap-3 px-4 py-3"
@@ -79,9 +89,8 @@ export default function ProfilePage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              {/* P3-3: MOCK_USER.provider 활용 (백엔드 연결 시 자동으로 올바른 provider 표시) */}
-          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{MOCK_USER.provider} 계정 연동</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{MOCK_USER.email}</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Google 계정 연동</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
             </div>
             <span
               className="rounded-full px-2.5 py-1 text-xs font-medium"
