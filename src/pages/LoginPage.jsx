@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 export default function LoginPage() {
   const navigate = useNavigate()
 
+  // 세준이가 추가한것
   function handleGoogleLogin() {
-    localStorage.setItem('ppa_logged_in', 'true')
-    navigate('/loading?next=/dashboard&message=논문 요약하러 가는중')
+  window.location.href = 'http://localhost:8000/auth/google'
   }
 
   return (

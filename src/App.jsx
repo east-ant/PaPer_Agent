@@ -8,6 +8,7 @@ import ProfilePage from './pages/ProfilePage'
 import LoadingPage from './pages/LoadingPage'
 import Sidebar from './components/layout/Sidebar'
 import Topbar from './components/layout/Topbar'
+import AuthCallbackPage from './pages/AuthCallbackPage' //세준이가 추가함
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -38,6 +39,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        
+        {/* 세준이가 추가한 OAuth 콜백 라우트 */}
+        <Route path="/auth/callback" element={<AuthCallbackPage />} /> 
+        
         <Route path="/login" element={<LoginPage />} />
         <Route path="/loading" element={<LoadingPage />} />
         <Route path="/" element={<ProtectedRoute />}>
