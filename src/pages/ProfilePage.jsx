@@ -9,7 +9,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem('ppa_token')
     if (!token) return
-    fetch(`http://localhost:8000/auth/me?token=${token}`)
+    fetch(`https://paper-agent-altv.onrender.com/auth/me?token=${token}`)
       .then(res => res.json())
       .then(data => setUser(data))
   }, [])

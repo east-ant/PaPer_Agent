@@ -5,7 +5,7 @@ export default function LoginPage() {
 
   // 세준이가 추가한것
   function handleGoogleLogin() {
-  window.location.href = 'http://localhost:8000/auth/google'
+  window.location.href = 'https://paper-agent-altv.onrender.com/auth/google'
   }
 
   return (
