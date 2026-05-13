@@ -254,28 +254,24 @@ VITE_SLACK_CLIENT_ID=...
 
 ### 2026-05-12
 
-#### 추가
-- 전체 페이지/컴포넌트 CSS Modules 전환 — 기존 인라인 `style={{}}` → `.module.css` 분리
-- `DashboardPage` — Chart.js 수집 트렌드 차트 추가 (주별/월별/년별 전환)
-- `DashboardPage` — KPI 카드 3단 구조 개선 (큰 숫자 + muted 캡션 + 초록 highlight)
-- `LoadingPage` — 에이전트 저장 플로우 단계별 순차 문구 + pill 인디케이터
-- `AgentStepper` — 소스 카드 툴팁 설명 추가 (각 소스 한국어 설명)
-- `index.css` — `--chart-line` 토큰 분리 (데이터 시각화 전용 보라색)
-- `index.css` — `focus:not(:focus-visible)` 처리 (마우스 클릭 outline 제거)
-- `AgentStatusPage` — 에이전트 활성/일시정지 토글 버튼 (알림 미연결 시 disabled)
-- `AgentStatusPage` — 일시정지 원인별 안내 CTA 박스
-- `src/api/` — API 레이어 분리 (`auth.js`, `papers.js`, `agent.js`)
-- `bookmarkStore` — `clearBookmarks()` 액션 추가
+#### 새로 추가된 기능
+- 대시보드에 논문 수집 트렌드 그래프 추가 (주별 / 월별 / 연별로 전환 가능)
+- 대시보드 수치 카드 디자인 개선 (총 수집 수, 키워드 수, 마지막 수집 시각을 한눈에 확인)
+- 에이전트 설정 저장 시 로딩 화면에서 단계별 진행 문구 순차 표시 ("키워드 분석 중 → 최신 논문 찾는 중 → 요약 준비 중")
+- 에이전트 설정 화면에서 각 수집 소스(arXiv 등)에 한국어 설명 툴팁 추가
+- 에이전트 현황 페이지에 활성화 / 일시정지 토글 버튼 추가 (알림 채널 미연결 시 비활성화)
+- 에이전트가 일시정지 상태일 때 원인과 해결 방법 안내 박스 표시
+- 북마크 전체 초기화 기능 추가 (로그아웃 시 자동 적용)
+- 백엔드 연결을 위한 API 호출 파일 구조 사전 준비 (auth / papers / agent)
 
-#### 디자인 수정
-- `AgentStatusPage` — 일시정지 안내 박스 색상: 빨강(error) → 주황(warning)으로 완화
-- `Topbar` — 활성화 상태 dot ring 효과, 팝오버 너비 확장 및 다음 수집 시각 표시
-- `Sidebar` — 활성 nav 항목 왼쪽 accent bar 추가
+#### 디자인 개선
+- 에이전트 일시정지 안내 박스 색상을 빨간색 → 주황색으로 변경 (위급한 느낌 완화)
+- 상단 바의 에이전트 상태 표시에 깜빡이는 효과 추가, 호버 시 Discord/Slack 연결 상태 확인 가능
+- 왼쪽 사이드바에서 현재 보고 있는 메뉴 항목에 강조 바(accent bar) 표시
 
 #### 버그 수정
-- `AgentStepper` — 취소 버튼 클릭 시 변경사항이 Zustand에 남던 버그 → 스냅샷 복원으로 수정
-- `AgentStepper` — 알림 연결 후 연결 버튼 재클릭 가능하던 버그 → `disabled` 처리
-- `DashboardPage` — 트렌드 주별 데이터가 `mockStats`와 불일치하던 버그 수정
-- `Sidebar` / `ProfilePage` — 로그아웃 시 Zustand 스토어 미정리 버그 수정
-- `LoadingPage` — `window.setTimeout` → `setTimeout`
-- `agentStatus.js` — 미사용 `STATUS_CONFIG` export 제거
+- 에이전트 설정 중 취소 버튼을 눌러도 변경사항이 남아있던 문제 수정 (취소 시 이전 상태로 완전 복원)
+- 알림 채널 연결 후 연결 버튼을 다시 누를 수 있던 문제 수정
+- 대시보드 그래프 데이터가 수치 카드와 맞지 않던 문제 수정
+- 로그아웃 시 에이전트 설정과 북마크가 초기화되지 않던 문제 수정
+- 에이전트 현황 페이지에서 상태에 맞지 않는 버튼 문구가 표시되던 문제 수정 (활성 상태일 때만 "일시정지" 표시)
