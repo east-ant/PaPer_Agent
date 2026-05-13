@@ -4,9 +4,9 @@ import styles from './LoginPage.module.css'
 export default function LoginPage() {
   const navigate = useNavigate()
 
+  // 세준이가 추가한것
   function handleGoogleLogin() {
-    localStorage.setItem('ppa_logged_in', 'true')
-    navigate('/loading?next=/dashboard&message=논문 요약하러 가는중')
+  window.location.href = 'https://paper-agent-altv.onrender.com/auth/google'
   }
 
   return (
