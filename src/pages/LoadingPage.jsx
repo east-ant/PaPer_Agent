@@ -9,7 +9,7 @@ export default function LoadingPage() {
   const [params] = useSearchParams()
   const message  = params.get('message')
   const next     = params.get('next') || '/dashboard'
-  const isAgent  = !message  // 에이전트 설정 저장 플로우 = message 없음
+  const isAgent  = params.get('mode') === 'agent'
   const [stepIdx, setStepIdx] = useState(0)
 
   useEffect(() => {

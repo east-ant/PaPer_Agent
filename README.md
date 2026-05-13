@@ -227,21 +227,55 @@ VITE_SLACK_CLIENT_ID=...
 
 ---
 
+## 구현된 주요 기능
+
+### 페이지
+
+| 페이지 | 주요 기능 |
+|---|---|
+| 로그인 | Google OAuth 연동 버튼, 로딩 전환 |
+| 대시보드 — 통합 | KPI 카드 3개, 수집 트렌드 차트 (주별/월별/년별), 최신 논문 목록 |
+| 대시보드 — 인기/신규 | 급상승 논문 TOP3, 기간 필터(1일/3일/7일) 신규 수집 목록 |
+| 대시보드 — 내 보관함 | 북마크 목록, 최신순/인용순 정렬 |
+| 에이전트 설정 | 5단계 stepper (키워드 → 소스 → 요약범위 → 알림 → 요약확인) |
+| 에이전트 현황 | 상태 표시, 활성/일시정지 토글, 설정 요약, 알림 채널 연결 상태 |
+| 내 정보 | 프로필 카드, 계정 정보, 연동 상태, 로그아웃 |
+
+### 공통 컴포넌트
+
+- **Sidebar** — 접기/펼치기 토글, 네비게이션, 로그아웃
+- **Topbar** — 탭 네비게이션(대시보드), 에이전트 상태 pill, hover 시 Discord/Slack 연결 상태 popover
+- **스켈레톤 shimmer** — 데이터 로딩 중 플레이스홀더 UI
+- **북마크 버튼** — hover 시 표시, 저장된 항목은 항상 표시, 보관함 연동
+
+---
+
 ## 업데이트 내역
 
-### 추가
+### 2026-05-12
+
+#### 추가
+- 전체 페이지/컴포넌트 CSS Modules 전환 — 기존 인라인 `style={{}}` → `.module.css` 분리
+- `DashboardPage` — Chart.js 수집 트렌드 차트 추가 (주별/월별/년별 전환)
+- `DashboardPage` — KPI 카드 3단 구조 개선 (큰 숫자 + muted 캡션 + 초록 highlight)
+- `LoadingPage` — 에이전트 저장 플로우 단계별 순차 문구 + pill 인디케이터
+- `AgentStepper` — 소스 카드 툴팁 설명 추가 (각 소스 한국어 설명)
+- `index.css` — `--chart-line` 토큰 분리 (데이터 시각화 전용 보라색)
+- `index.css` — `focus:not(:focus-visible)` 처리 (마우스 클릭 outline 제거)
 - `AgentStatusPage` — 에이전트 활성/일시정지 토글 버튼 (알림 미연결 시 disabled)
-- `AgentStatusPage` — 일시정지 원인별 안내 CTA 박스 (알림 미연결 vs 기타)
-- `DashboardPage` — 논문 요약 길이 설정(short/medium/full) 실제 반영
-- `DashboardPage` — 데이터 로딩 중 스켈레톤 shimmer UI
+- `AgentStatusPage` — 일시정지 원인별 안내 CTA 박스
 - `src/api/` — API 레이어 분리 (`auth.js`, `papers.js`, `agent.js`)
 - `bookmarkStore` — `clearBookmarks()` 액션 추가
 
-### 버그 수정
+#### 디자인 수정
+- `AgentStatusPage` — 일시정지 안내 박스 색상: 빨강(error) → 주황(warning)으로 완화
+- `Topbar` — 활성화 상태 dot ring 효과, 팝오버 너비 확장 및 다음 수집 시각 표시
+- `Sidebar` — 활성 nav 항목 왼쪽 accent bar 추가
+
+#### 버그 수정
 - `AgentStepper` — 취소 버튼 클릭 시 변경사항이 Zustand에 남던 버그 → 스냅샷 복원으로 수정
 - `AgentStepper` — 알림 연결 후 연결 버튼 재클릭 가능하던 버그 → `disabled` 처리
-- `AgentStepper` — 저장 후 LoadingPage에 메시지 미전달 수정
-- `LoadingPage` — `window.setTimeout` → `setTimeout`
 - `DashboardPage` — 트렌드 주별 데이터가 `mockStats`와 불일치하던 버그 수정
 - `Sidebar` / `ProfilePage` — 로그아웃 시 Zustand 스토어 미정리 버그 수정
+- `LoadingPage` — `window.setTimeout` → `setTimeout`
 - `agentStatus.js` — 미사용 `STATUS_CONFIG` export 제거

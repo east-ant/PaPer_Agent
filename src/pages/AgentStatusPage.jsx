@@ -68,13 +68,13 @@ export default function AgentStatusPage() {
                 <button
                   type="button"
                   onClick={handleToggleActive}
-                  disabled={!agent.isActive && !hasNotification}
-                  title={!agent.isActive && !hasNotification ? '알림 채널을 먼저 연결해주세요' : undefined}
+                  disabled={status === 'paused' && !hasNotification}
+                  title={status === 'paused' && !hasNotification ? '알림 채널을 먼저 연결해주세요' : undefined}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    agent.isActive ? styles.toggleBtnPause : styles.toggleBtnResume
-                  } ${!agent.isActive && !hasNotification ? styles.toggleBtnDisabled : ''}`}
+                    status === 'active' ? styles.toggleBtnPause : styles.toggleBtnResume
+                  } ${status === 'paused' && !hasNotification ? styles.toggleBtnDisabled : ''}`}
                 >
-                  {agent.isActive ? '일시정지' : '재개'}
+                  {status === 'active' ? '일시정지' : '재개'}
                 </button>
               )}
               <Link

@@ -55,8 +55,8 @@ export const useAgentStore = create(
               ...state.agent.notifications,
               [channel]: {
                 connected: true,
-                lastTestStatus: 'success',
-                lastTestAt: Date.now(),
+                lastTestStatus: null,
+                lastTestAt: null,
               },
             },
           },

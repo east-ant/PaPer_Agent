@@ -26,7 +26,7 @@ export default function LoginPage() {
             수집하고 정리합니다.
           </p>
           <p className="animate-fade-up-2 text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            Paper Agent — arXiv 논문 자동수집 서비스
+            Paper Agent — 논문 자동수집 서비스
           </p>
         </div>
       </section>

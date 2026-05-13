@@ -132,7 +132,7 @@ export default function AgentStepper() {
       isConfigured: configured,
       isActive: configured && hasNotification,
     })
-    navigate('/loading?next=/dashboard&message=에이전트를 설정하는 중입니다')
+    navigate('/loading?next=/dashboard&mode=agent')
   }
 
   return (
