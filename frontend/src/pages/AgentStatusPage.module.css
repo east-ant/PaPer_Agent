@@ -1,0 +1,101 @@
+.card {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+
+.cardHeaderLabel {
+  color: var(--text-secondary);
+}
+
+.editBtn {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.editBtn:hover {
+  border-color: var(--text-primary);
+}
+
+.statusDesc {
+  color: var(--text-secondary);
+}
+
+.unsetLink {
+  color: var(--accent);
+}
+
+.sectionHeader {
+  color: var(--text-primary);
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.rowDivider {
+  border-top: var(--border-width) solid var(--border);
+}
+
+.rowLabel {
+  color: var(--text-secondary);
+}
+
+.rowValue {
+  color: var(--text-primary);
+}
+
+.channelName {
+  color: var(--text-primary);
+}
+
+.dotConnected {
+  background: var(--status-active-dot);
+}
+.dotDisconnected {
+  background: var(--status-error-dot);
+}
+.textConnected {
+  color: var(--status-active);
+}
+.textDisconnected {
+  color: var(--status-error);
+}
+
+/* ── 활성/비활성 토글 버튼 ── */
+.toggleBtnPause {
+  background: var(--status-error-bg);
+  color: var(--status-error);
+  border: var(--border-width) solid rgba(220, 38, 38, 0.15);
+}
+.toggleBtnPause:hover {
+  background: rgba(220, 38, 38, 0.15);
+}
+.toggleBtnResume {
+  background: var(--status-active-bg);
+  color: var(--status-active);
+  border: var(--border-width) solid rgba(34, 197, 94, 0.15);
+}
+.toggleBtnResume:hover {
+  background: rgba(34, 197, 94, 0.15);
+}
+.toggleBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── 일시정지 CTA 박스 ── */
+.pausedBox {
+  background: var(--status-warning-bg);
+  border: var(--border-width) solid rgba(217, 119, 6, 0.18);
+}
+.pausedBoxDesc { color: var(--text-secondary); }
+.pausedBoxLink {
+  color: var(--status-warning);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pausedBoxLink:hover { opacity: 0.75; }
+
+.channelTag {
+  background: var(--border);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}

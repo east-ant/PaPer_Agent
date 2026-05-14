@@ -1,0 +1,77 @@
+.topbar {
+  height: var(--topbar-height);
+  border-bottom: var(--border-width) solid var(--border);
+  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+}
+
+
+.tabLink {
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+  outline: none;
+}
+.tabLink:hover {
+  color: var(--text-primary);
+}
+.tabLinkActive {
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--text-primary);
+  outline: none;
+}
+
+.pageTitle {
+  color: var(--text-primary);
+}
+
+.pillBtn {
+  /* color/bg set dynamically via status */
+}
+
+.popover {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+
+.popoverTitle {
+  color: var(--text-primary);
+}
+
+.statusActive {
+  color: var(--status-active);
+}
+.statusPaused {
+  color: var(--status-error);
+}
+.statusUnset {
+  color: var(--text-secondary);
+}
+
+.statusRowLabel {
+  color: var(--text-secondary);
+}
+.statusRowConnected {
+  color: var(--status-active);
+}
+.statusRowDisconnected {
+  color: var(--status-error);
+}
+.dotConnected {
+  background: var(--status-active-dot);
+}
+.dotDisconnected {
+  background: var(--status-error-dot);
+}
+
+/* active pill dot — ring으로 살아있는 느낌 */
+.dotActivePill {
+  background: var(--status-active-dot);
+  box-shadow: 0 0 0 2.5px var(--status-active-bg);
+}
+
+.popoverDivider {
+  border-top: var(--border-width) solid var(--border);
+}
+.popoverMeta {
+  color: var(--text-muted);
+}

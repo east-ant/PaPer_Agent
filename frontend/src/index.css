@@ -1,0 +1,128 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@import "tailwindcss";
+
+/* ── Design Tokens ───────────────────────────────────── */
+:root {
+  /* Background — §4,§13: 순수 #fff/#000 금지, 틴트된 값 사용 */
+  --bg-primary:    #f7f7f8;
+  --bg-secondary:  #f0f0f2;
+  --bg-card:       #fdfdfd;
+
+  /* Border */
+  --border:        rgba(0, 0, 0, 0.07);
+  --border-width:  0.5px;
+
+  /* Text */
+  --text-primary:   #0f0f10;
+  --text-secondary: #71717a;
+  --text-muted:     #a1a1aa;
+
+  /* Dark (sidebar) */
+  --bg-dark:      #111111;
+  --bg-dark-card: #1a1a1a;
+  --border-dark:  rgba(255, 255, 255, 0.08);
+  --text-on-dark: #f4f4f5;
+
+  /* Accent — PPA 포인트 컬러 */
+  --accent:       #b85c6e;
+  --accent-hover: #a04e5f;
+  --accent-light: rgba(184, 92, 110, 0.10);
+
+  /* Chart — 데이터 시각화 전용 (분석툴 신뢰감) */
+  --chart-line: #5B5BD6;
+
+  /* Status — 시맨틱 컬러 토큰 (§12 Topbar, AgentStepper 공유) */
+  --status-active:      #16a34a;
+  --status-active-bg:   rgba(34, 197, 94, 0.10);
+  --status-active-dot:  #22c55e;
+  --status-error:       #dc2626;
+  --status-error-bg:    rgba(239, 68, 68, 0.10);
+  --status-error-dot:   #ef4444;
+  --status-warning:     #d97706;
+  --status-warning-bg:  rgba(217, 119, 6, 0.10);
+  --status-neutral:     #71717a;
+  --status-neutral-bg:  rgba(161, 161, 170, 0.12);
+  --status-neutral-dot: #a1a1aa;
+
+  /* Typography scale — §3 */
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+
+  /* Layout — DENSITY=8 */
+  --sidebar-width:           200px;
+  --sidebar-width-collapsed: 56px;
+  --topbar-height:           48px;
+  --card-radius:             12px;   /* rounded-xl */
+}
+
+/* ── Base ────────────────────────────────────────────── */
+@layer base {
+  html { background: var(--bg-primary); }
+
+  body {
+    margin: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+    word-break: keep-all;
+    line-height: 1.7;   /* §3 한국어 필수값 */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+
+  /* 키보드 탐색 시에만 focus ring 표시 */
+  *:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* 마우스 클릭으로 포커스된 모든 요소: outline 제거 */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ── Animations — MOTION=4 ───────────────────────────── */
+@layer utilities {
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .animate-fade-up-1 { animation: fadeUp 0.35s 0.05s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .animate-fade-up-2 { animation: fadeUp 0.35s 0.10s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .animate-fade-up-3 { animation: fadeUp 0.35s 0.15s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .animate-fade-up-4 { animation: fadeUp 0.35s 0.20s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+  .animate-fade-in { animation: fadeIn 0.3s ease both; }
+
+  /* Skeleton shimmer — §7 DESIGN.md */
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-secondary) 25%,
+      var(--bg-card)      50%,
+      var(--bg-secondary) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+}

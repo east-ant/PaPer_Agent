@@ -1,0 +1,32 @@
+.brandPanel {
+  background: linear-gradient(135deg, #111111 0%, #1c1c1e 60%, #2a1a1f 100%);
+}
+
+.glow {
+  background: var(--accent);
+}
+
+.loginPanel {
+  background: var(--bg-card);
+}
+
+.heading {
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtext {
+  color: var(--text-secondary);
+}
+
+.googleBtn {
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.googleBtn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.footer {
+  color: var(--text-muted);
+}

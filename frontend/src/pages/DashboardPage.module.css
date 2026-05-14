@@ -1,0 +1,183 @@
+/* ── 공통 카드 ── */
+.card {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+.card:hover {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+.cardHeader {
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.rowDivider {
+  border-top: var(--border-width) solid var(--border);
+}
+
+/* ── Empty state ── */
+.emptyIcon {
+  background: var(--accent-light);
+}
+.emptyIconSvg {
+  color: var(--accent);
+}
+.emptyTitle {
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.emptyDesc {
+  color: var(--text-secondary);
+}
+.emptyBtn {
+  background: var(--accent);
+}
+
+/* ── KPI ── */
+.kpiLabel {
+  color: var(--text-secondary);
+}
+.kpiCaption {
+  color: var(--text-muted);
+}
+.kpiValueDefault {
+  color: var(--text-primary);
+}
+.kpiValuePositive {
+  color: var(--status-active);
+}
+.kpiHeroCard {
+  background: var(--bg-card);
+  border: var(--border-width) solid rgba(184, 92, 110, 0.2);
+}
+.kpiCaptionHighlight {
+  color: var(--status-active);
+}
+.kpiRankNum {
+  color: var(--accent);
+}
+.kpiRankLabel {
+  color: var(--text-primary);
+}
+.kpiRankCount {
+  color: var(--text-secondary);
+}
+.kpiKeywordMeta {
+  color: var(--text-muted);
+}
+
+/* ── Trend chart ── */
+.trendTitle {
+  color: var(--text-primary);
+}
+.trendMeta {
+  color: var(--text-muted);
+}
+.trendPeriodActive {
+  background: var(--chart-line);
+  color: #ffffff;
+  border: none;
+  outline: none;
+}
+.trendPeriodInactive {
+  color: var(--text-muted);
+  border: var(--border-width) solid var(--border);
+  background: transparent;
+  outline: none;
+}
+.chartBg {
+  background: var(--bg-primary);
+}
+
+/* ── Paper list section ── */
+.sectionTitle {
+  color: var(--text-primary);
+}
+.sectionMeta {
+  color: var(--text-muted);
+}
+.updatedAt {
+  color: var(--text-muted);
+}
+
+/* ── Paper row ── */
+.paperTitle {
+  color: var(--text-primary);
+}
+.paperRow {
+  transition: background 0.15s ease;
+}
+.paperRow:hover {
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+.paperRow:hover .paperTitle {
+  color: var(--accent);
+}
+.paperMeta {
+  color: var(--text-muted);
+}
+.paperJournal {
+  color: var(--text-muted);
+}
+.paperSummary {
+  color: var(--text-secondary);
+}
+.keyword {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.externalIcon {
+  color: var(--text-muted);
+}
+.bookmarkBtn {
+  color: var(--text-muted);
+  opacity: 0.35;
+}
+.bookmarkBtn:hover {
+  opacity: 1 !important;
+  color: var(--accent);
+}
+.bookmarkBtnActive {
+  color: var(--accent);
+  opacity: 1;
+}
+
+/* ── Popular / Archive tabs ── */
+.trendingIcon {
+  color: var(--accent);
+}
+.periodBtnActive {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+  border: none;
+  outline: none;
+}
+.periodBtnInactive {
+  color: var(--text-muted);
+  border: var(--border-width) solid var(--border);
+  outline: none;
+}
+.emptyPeriod {
+  color: var(--text-muted);
+}
+
+/* ── Archive ── */
+.archiveTitle {
+  color: var(--text-primary);
+}
+.archiveMeta {
+  color: var(--text-muted);
+}
+.archiveEmptyIcon {
+  background: var(--accent-light);
+}
+.archiveEmptyIconSvg {
+  color: var(--accent);
+}
+.archiveEmptyTitle {
+  color: var(--text-primary);
+}
+.archiveEmptyDesc {
+  color: var(--text-muted);
+}
