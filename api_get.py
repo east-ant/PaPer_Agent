@@ -29,9 +29,15 @@ try:
     from config import settings
 except ImportError:
     try:
-        from api_down.config import settings
+        from backend.config import settings
     except ImportError:
-        from Final_Integration_Code.config import settings
+        try:
+            from api_down.config import settings
+        except ImportError:
+            try:
+                from Final_Integration_Code.config import settings
+            except ImportError:
+                settings = None
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -46,10 +52,10 @@ TOP_N_CUTOFF = 30
 PDF_PROBE_TIMEOUT = 8
 PDF_PROBE_RETRIES = 2
 PDF_PROBE_BYTES = 8192
-METADATA_TIMEOUT = 12
-METADATA_RETRIES = 2
-ARXIV_TIMEOUT = 20
-ARXIV_RETRIES = 3
+METADATA_TIMEOUT = 15
+METADATA_RETRIES = 3
+ARXIV_TIMEOUT = 30
+ARXIV_RETRIES = 5
 HISTORY_JSON = BASE_DIR / "processed_papers.json"
 
 
@@ -768,7 +774,7 @@ def arxiv_search(query, max_results):
                 break
             except urllib.error.HTTPError as error:
                 if error.code in (429, 503) and attempt < ARXIV_RETRIES - 1:
-                    time.sleep(2.0 * (attempt + 1))
+                    time.sleep(5.0 * (attempt + 1))
                     continue
                 raise
 

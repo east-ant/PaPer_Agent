@@ -15,8 +15,7 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 # REDIRECT_URI = "http://localhost:8000/auth/google/callback"
-# REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/google/callback")
-REDIRECT_URI = os.getenv("REDIRECT_URI", "https://paper-agent-altv.onrender.com/auth/google/callback")
+REDIRECT_URI = os.getenv("REDIRECT_URI", "https://paper-agent-altv.onrender.com/auth/google/callback")  # 기존: Render 운영 환경
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 

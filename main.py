@@ -11,9 +11,20 @@ from api_get import (
 from agent import analyze_paper, is_relevant, translate_abstract, read_paper_pdf, summarize_body, summarize_full
 from config import settings
 from auth import router as auth_router, decode_jwt
+# Phase 0-1: 신규 라우터 임포트
+from notice.router import router as notice_router
+from discord_module.router import router as discord_router, oauth_callback as discord_oauth_callback
+from storage_box.router import router as storage_box_router
+# Phase 4-5: 스케줄러 임포트
+from notice.scheduler import start_scheduler, stop_scheduler, load_active_jobs
+from discord_module.bot import run_bot_in_background
 
 app = FastAPI()
 app.include_router(auth_router)
+# Phase 0-1: 신규 라우터 등록
+app.include_router(notice_router)
+app.include_router(discord_router)
+app.include_router(storage_box_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,11 +62,28 @@ def get_email_from_token(authorization: Optional[str]) -> str:
 @app.on_event("startup")
 def startup():
     init_db()
+    # Phase 4-5: 스케줄러 시작
+    start_scheduler()
+    load_active_jobs()
+    # Discord Bot (Gateway) 시작
+    run_bot_in_background()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    # Phase 4-5: 스케줄러 중지
+    stop_scheduler()
 
 
 @app.get("/")
 def root():
     return {"message": "Paper Agent 서버 정상 동작"}
+
+
+# Discord OAuth 호환 콜백
+@app.get("/api/auth/discord/callback")
+async def discord_auth_callback(code: str, state: str, authorization: Optional[str] = Header(None)):
+    return await discord_oauth_callback(code=code, state=state, authorization=authorization)  # # .env의 DISCORD_OAUTH_REDIRECT_URI 호환
 
 
 @app.post("/search")
