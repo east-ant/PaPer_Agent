@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useAgentStore }    from '../store/agentStore'
+import { useAgentStore } from '../store/agentStore'
 import { useBookmarkStore } from '../store/bookmarkStore'
-import { getAgentStatus }   from '../utils/agentStatus'
-import { fetchPapers, fetchStats } from '../api/papers'
-import { mockStats } from '../data/mock'
+import { getAgentStatus } from '../utils/agentStatus'
+import { fetchPapers, fetchStats, fetchTrend } from '../api/papers'
 import { ArrowUpRight, ExternalLink, TrendingUp, BookOpen, Bookmark } from 'lucide-react'
 import styles from './DashboardPage.module.css'
 import { Line } from 'react-chartjs-2'
@@ -21,17 +20,18 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartToo
 
 // 백엔드 연결 시: fetchTrend(period) 로 교체
 // 주별은 mock.js의 trend/trendLabels와 동기화, 월별/년별은 독립 mock
-const TREND_SETS = {
-  '주별': { data: mockStats.trend, labels: mockStats.trendLabels },
-  '월별': { data: [45, 88, 120, 95, 140, 185, 210, 178, 240, 290, 265, 340], labels: ['7월','8월','9월','10월','11월','12월','1월','2월','3월','4월','5월','6월'] },
-  '년별': { data: [120, 340, 890, 1248], labels: ['2021','2022','2023','2024'] },
-}
+// TREND_SETS mock은 제거됨
 
 export default function DashboardPage() {
   const [params] = useSearchParams()
-  const tab      = params.get('tab') || 'total'
+  const tab = params.get('tab') || 'total'
   const { agent } = useAgentStore()
-  const status   = getAgentStatus(agent)
+  const { fetchBookmarks } = useBookmarkStore()
+  const status = getAgentStatus(agent)
+
+  useEffect(() => {
+    fetchBookmarks()
+  }, [fetchBookmarks])
 
   if (status === 'unset') return <EmptyState />
 
@@ -97,19 +97,24 @@ function SkeletonPaperRow({ first = false }) {
 /* ── Total tab ── */
 function TotalPage({ agent }) {
   const [trendPeriod, setTrendPeriod] = useState('주별')
-  const [papers, setPapers]           = useState([])
-  const [stats,  setStats]            = useState(null)
-  const [isLoading, setIsLoading]     = useState(true)
+  const [papers, setPapers] = useState([])
+  const [stats, setStats] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
+    const defaultStats = { totalPapers: 0, weeklyAdded: 0, weeklyGrowth: '0%', topKeywords: [], updatedAt: '-' }
     Promise.all([
-      fetchPapers({ limit: agent.collectCount || 5, sort: 'latest' }),
-      fetchStats(),
+      fetchPapers({ limit: agent.collectCount || 5, sort: 'latest' }).catch(() => []),
+      fetchStats().catch(() => defaultStats),
     ]).then(([paperData, statsData]) => {
       if (cancelled) return
-      setPapers(paperData)
-      setStats(statsData)
+      setPapers(Array.isArray(paperData) ? paperData : [])
+      setStats(statsData || defaultStats)
+      setIsLoading(false)
+    }).catch(() => {
+      if (cancelled) return
+      setStats(defaultStats)
       setIsLoading(false)
     })
     return () => { cancelled = true }
@@ -136,15 +141,17 @@ function TotalPage({ agent }) {
     <div className="animate-fade-up space-y-2">
       {/* KPI row */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <KpiCard label="총 수집" value={stats.totalPapers.toLocaleString()} caption="이번주" captionHighlight={`+${stats.weeklyAdded}`} hero />
-        <KpiCard label="이번주 신규" value={stats.weeklyAdded} caption={`지난주 대비 ${stats.weeklyGrowth}`} positive />
+        <KpiCard label="총 수집" value={(stats?.totalPapers ?? 0).toLocaleString()} caption="이번주" captionHighlight={`+${stats?.weeklyAdded ?? 0}`} hero />
+        <KpiCard label="이번주 신규" value={stats?.weeklyAdded ?? 0} caption={`지난주 대비 ${stats?.weeklyGrowth ?? '0%'}`} positive />
         <div className={`rounded-xl p-3 ${styles.card}`}>
           <p className={`mb-2 text-xs font-medium ${styles.kpiLabel}`}>
             인기 키워드 TOP3
             <span className={`ml-1.5 ${styles.kpiKeywordMeta}`}>이번 주</span>
           </p>
           <div className="space-y-1.5">
-            {stats.topKeywords.map((item, i) => (
+            {(stats?.topKeywords ?? []).length === 0 ? (
+              <p className={`text-xs ${styles.kpiRankLabel}`}>수집 데이터가 없습니다</p>
+            ) : (stats?.topKeywords ?? []).map((item, i) => (
               <div key={item.label} className="flex items-center justify-between">
                 <span className="text-sm">
                   <span className={`mr-1.5 font-medium ${styles.kpiRankNum}`}>{i + 1}</span>
@@ -188,7 +195,7 @@ function TotalPage({ agent }) {
             <h2 className={`text-sm font-medium ${styles.sectionTitle}`}>최신 논문</h2>
             <p className={`text-xs ${styles.sectionMeta}`}>날짜 기준 최신 {agent.collectCount || 5}개</p>
           </div>
-          <span className={`text-xs ${styles.updatedAt}`}>{stats.updatedAt}</span>
+          <span className={`text-xs ${styles.updatedAt}`}>{stats?.updatedAt ?? '-'}</span>
         </div>
         <PaperList papers={papers} showSummary summaryLength={agent.summaryLength} />
       </section>
@@ -198,15 +205,18 @@ function TotalPage({ agent }) {
 
 /* ── Popular tab ── */
 function PopularPage() {
-  const [newPeriod, setNewPeriod]   = useState('7일')
-  const [papers, setPapers]         = useState([])
-  const [isLoading, setIsLoading]   = useState(true)
+  const [newPeriod, setNewPeriod] = useState('7일')
+  const [papers, setPapers] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     fetchPapers({ limit: 20, sort: 'latest' }).then((data) => {
       if (cancelled) return
-      setPapers(data)
+      setPapers(Array.isArray(data) ? data : [])
+      setIsLoading(false)
+    }).catch(() => {
+      if (cancelled) return
       setIsLoading(false)
     })
     return () => { cancelled = true }
@@ -221,7 +231,7 @@ function PopularPage() {
     )
   }
 
-  const rising    = [...papers].sort((a, b) => b.growth - a.growth).slice(0, 3)
+  const rising = [...papers].sort((a, b) => b.growth - a.growth).slice(0, 3)
   const periodMap = { '1일': 1, '3일': 3, '7일': 7 }
   const filteredNew = papers.filter((p) => p.daysAgo <= periodMap[newPeriod])
 
@@ -269,30 +279,31 @@ function PopularPage() {
 
 /* ── Archive tab ── */
 function ArchivePage() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [sortBy, setSortBy]       = useState('최신순')
-  const [papers, setPapers]       = useState([])
-  const { bookmarks }             = useBookmarkStore()
-  const { agent }                 = useAgentStore()
+  const [sortBy, setSortBy] = useState('최신순')
+  const { bookmarks, loading } = useBookmarkStore()
+  const { agent } = useAgentStore()
 
-  useEffect(() => {
-    let cancelled = false
-    fetchPapers({ limit: 100 }).then((data) => {
-      if (cancelled) return
-      setPapers(data)
-      setIsLoading(false)
-    })
-    return () => { cancelled = true }
-  }, [])
+  // DB에서 반환된 bookmarks를 PaperList가 그릴 수 있는 형태로 맵핑
+  const mappedBookmarks = bookmarks.map(b => ({
+    id: b.id, // DB id for deletion
+    paper_id: b.paper_id,
+    arxiv_id: b.paper_id,
+    title: b.title,
+    summary: b.summary,
+    url: b.link,
+    link: b.link,
+    journal: b.source,
+    publishedAt: b.bookmarked_at ? b.bookmarked_at.slice(0, 10) : '방금 전',
+    authors: '',
+    citations: 0,
+    keywords: []
+  }))
 
-  const bookmarkedPapers = papers.filter((p) => bookmarks.includes(p.id))
-  const sortedPapers = [...bookmarkedPapers].sort((a, b) =>
-    sortBy === '인용순'
-      ? parseInt(String(b.citations).replace(/,/g, ''), 10) - parseInt(String(a.citations).replace(/,/g, ''), 10)
-      : b.publishedAt.localeCompare(a.publishedAt)
+  const sortedPapers = [...mappedBookmarks].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt) // 일단 최신순만
   )
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="animate-fade-up">
         <div className={`overflow-hidden rounded-xl ${styles.card}`}>
@@ -373,10 +384,28 @@ function KpiCard({ label, value, caption, captionHighlight, positive, hero }) {
 }
 
 function TrendChart({ period }) {
-  const { data, labels } = TREND_SETS[period] ?? TREND_SETS['주별']
+  const [chartDataState, setChartDataState] = useState({ data: [], labels: [] })
+  const [loading, setLoading] = useState(true)
 
-  const dataMax  = Math.max(...data)
-  const yMax     = Math.ceil((dataMax + 10) / 25) * 25
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    const p = period === '주별' ? 'weekly' : period === '월별' ? 'monthly' : 'yearly'
+    fetchTrend(p).then(res => {
+      if (cancelled) return
+      setChartDataState(res)
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [period])
+
+  const { data, labels } = chartDataState
+
+  if (loading) return <div className="flex h-[240px] items-center justify-center text-xs text-gray-400">데이터 로드 중...</div>
+  if (!data || data.length === 0) return <div className="flex h-[240px] items-center justify-center text-xs text-gray-400">데이터가 없습니다</div>
+
+  const dataMax = Math.max(...data)
+  const yMax = Math.ceil((dataMax + 10) / 25) * 25
   const stepSize = yMax <= 100 ? 25 : yMax <= 400 ? 100 : 250
 
   const chartData = {
@@ -410,7 +439,7 @@ function TrendChart({ period }) {
         displayColors: false,
         callbacks: {
           title: (items) => items[0].label,
-          label: (item)  => `수집 논문  ${item.parsed.y}편`,
+          label: (item) => `수집 논문  ${item.parsed.y}편`,
         },
       },
     },
@@ -441,27 +470,32 @@ function TrendChart({ period }) {
 const SUMMARY_FIELD = { short: 'summaryShort', medium: 'summary', full: 'summaryFull' }
 
 function PaperList({ papers, showSummary = false, summaryLength = 'medium' }) {
-  const { toggleBookmark, bookmarks } = useBookmarkStore()
+  const { toggleBookmark, bookmarkedPaperIds } = useBookmarkStore()
   const field = SUMMARY_FIELD[summaryLength] ?? 'summary'
 
   return (
     <div>
       {papers.map((paper, i) => {
-        const isBookmarked = bookmarks.includes(paper.id)
+        // falsy 체크 시 빈 문자열도 유효할 수 있으므로 ?? 사용, 혹은 명시적 우선순위
+        const paperId = String(paper.paper_id ?? paper.arxiv_id ?? paper.id)
+        const isBookmarked = bookmarkedPaperIds.includes(paperId)
+        
         return (
           <div
-            key={paper.id}
+            key={paperId + '-' + i} // 중복 방지
             className={`group relative ${styles.paperRow} ${i > 0 ? styles.rowDivider : ''}`}
           >
-            <a href={paper.url} target="_blank" rel="noreferrer" className="flex items-start gap-3 px-4 py-3 pr-9">
+            <a href={paper.url || paper.link} target="_blank" rel="noreferrer" className="flex items-start gap-3 px-4 py-3 pr-9">
               <div className="min-w-0 flex-1">
                 <h3 className={`mb-0.5 text-sm font-medium leading-snug ${styles.paperTitle}`}>{paper.title}</h3>
                 {showSummary && (
                   <p className={`mb-1 line-clamp-2 text-xs leading-relaxed ${styles.paperSummary}`}>{paper[field] || paper.summary}</p>
                 )}
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className={`text-xs ${styles.paperMeta}`}>{paper.authors.join(', ')} · {paper.publishedAt}</span>
-                  {paper.keywords.map((kw) => (
+                  <span className={`text-xs ${styles.paperMeta}`}>
+                    {Array.isArray(paper.authors) ? paper.authors.join(', ') : (paper.authors || 'Unknown')} · {paper.publishedAt}
+                  </span>
+                  {(paper.keywords || []).map((kw) => (
                     <span key={kw} className={`rounded px-1.5 py-0.5 text-xs font-medium ${styles.keyword}`}>{kw}</span>
                   ))}
                 </div>
@@ -472,10 +506,9 @@ function PaperList({ papers, showSummary = false, summaryLength = 'medium' }) {
 
             <button
               type="button"
-              onClick={() => toggleBookmark(paper.id)}
-              className={`absolute right-3 top-3 rounded p-0.5 transition-all duration-150 ${
-                isBookmarked ? styles.bookmarkBtnActive : styles.bookmarkBtn
-              }`}
+              onClick={() => toggleBookmark(paper)}
+              className={`absolute right-3 top-3 rounded p-0.5 transition-all duration-150 ${isBookmarked ? styles.bookmarkBtnActive : styles.bookmarkBtn
+                }`}
               title={isBookmarked ? '보관함에서 제거' : '보관함에 추가'}
             >
               <Bookmark size={13} fill={isBookmarked ? 'var(--accent)' : 'none'} strokeWidth={1.5} />

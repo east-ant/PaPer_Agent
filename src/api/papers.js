@@ -1,46 +1,66 @@
-// ── 논문 API ──────────────────────────────────────────
-// 백엔드 연결 시 아래 TODO 주석을 실제 fetch 로 교체합니다.
-// 반환 구조(shape)는 유지 — 컴포넌트 코드 변경 없음.
-
-import { mockPapers, mockStats } from '../data/mock'
+import { apiCall } from './agent'
 
 /**
- * 논문 목록 조회
- * @param {{ limit?: number, sort?: 'latest' | 'trending' }} options
- * @returns {Promise<Paper[]>}
- *
- * TODO: return await fetch(`/api/papers?sort=${sort}&limit=${limit}`).then((r) => r.json())
+ * 논문 목록 조회 (GET /papers)
+ * DB에 수집된 사용자 논문을 가져옴
  */
 export async function fetchPapers({ limit = 10, sort = 'latest' } = {}) {
-  const sorted =
-    sort === 'trending'
-      ? [...mockPapers].sort((a, b) => b.growth - a.growth)
-      : [...mockPapers].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
-  return sorted.slice(0, limit)
+  try {
+    const result = await apiCall('/papers')
+    // /papers는 배열을 직접 반환
+    const raw = Array.isArray(result) ? result : (result?.papers ?? [])
+    const papers = raw.map(p => ({
+      id:          p.id || p.arxiv_id || String(Math.random()),
+      arxiv_id:    p.arxiv_id || p.id,
+      title:       p.title || '제목 없음',
+      authors:     p.authors || '',
+      publishedAt: p.published ? String(p.published).slice(0, 10) : (p.year || ''),
+      journal:     p.category || p.source || '',
+      citations:   p.citations || 0,
+      summary:     p.summary || p.abstract || '',
+      link:        p.link || '',
+      keywords:    [],
+      url:         p.link || '',
+    }))
+
+    if (sort === 'trending') {
+      return papers.sort((a, b) => b.citations - a.citations).slice(0, limit)
+    }
+    return papers.slice(0, limit)
+  } catch {
+    return []
+  }
 }
 
 /**
- * KPI 통계 조회
- * @returns {Promise<Stats>}
- *
- * TODO: return await fetch('/api/stats').then((r) => r.json())
+ * KPI 통계 조회 (GET /api/notice/stats)
  */
 export async function fetchStats() {
-  return mockStats
+  const defaultStats = {
+    totalPapers: 0,
+    weeklyAdded: 0,
+    weeklyGrowth: '0%',
+    topKeywords: [],
+    updatedAt: '-',
+  }
+  try {
+    const result = await apiCall('/api/notice/stats')
+    if (result && result.ok && result.stats) return result.stats
+    return defaultStats
+  } catch {
+    return defaultStats
+  }
 }
 
 /**
- * 트렌드 차트 데이터 조회
- * @param {'weekly' | 'monthly' | 'yearly'} period
- * @returns {Promise<{ data: number[], labels: string[] }>}
- *
- * TODO: return await fetch(`/api/stats/trend?period=${period}`).then((r) => r.json())
+ * 트렌드 차트 데이터 조회 (GET /api/notice/stats/trend)
  */
 export async function fetchTrend(period = 'weekly') {
-  const map = {
-    weekly:  { data: mockStats.trend,       labels: mockStats.trendLabels },
-    monthly: { data: [45, 88, 120, 95, 140, 185, 210, 178, 240, 290, 265, 340], labels: ['7월','8월','9월','10월','11월','12월','1월','2월','3월','4월','5월','6월'] },
-    yearly:  { data: [120, 340, 890, 1248], labels: ['2021','2022','2023','2024'] },
+  try {
+    const result = await apiCall(`/api/notice/stats/trend?period=${period}`)
+    if (result && result.ok && result.trend) return result.trend
+    return { data: [], labels: [] }
+  } catch {
+    return { data: [], labels: [] }
   }
-  return map[period] ?? map.weekly
 }

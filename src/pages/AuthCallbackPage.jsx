@@ -3,21 +3,35 @@
 // App.jsx에 43-44번째줄 추가
 
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+
+function decodeJwtPayload(token) {
+  try {
+    const payloadPart = token.split('.')[1]
+    if (!payloadPart) return null
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    return JSON.parse(atob(padded))
+  } catch {
+    return null
+  }
+}
 
 export default function AuthCallbackPage() {
-  const navigate = useNavigate()
-
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('token')
 
     if (token) {
       localStorage.setItem('ppa_token', token)
+      localStorage.setItem('token', token)
       localStorage.setItem('ppa_logged_in', 'true')
+      const payload = decodeJwtPayload(token)
+      if (payload?.email) {
+        localStorage.setItem('user_email', payload.email)
+      }
       window.location.href = '/dashboard'  // navigate 대신 강제 새로고침
     } else {
-      navigate('/login', { replace: true })
+      window.location.href = '/login'
     }
   }, [])
 

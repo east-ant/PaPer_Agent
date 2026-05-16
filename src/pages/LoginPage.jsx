@@ -1,12 +1,11 @@
-import { useNavigate } from 'react-router-dom'
 import styles from './LoginPage.module.css'
 
-export default function LoginPage() {
-  const navigate = useNavigate()
+const API_BASE = import.meta.env.VITE_API_URL || 'https://paper-agent-altv.onrender.com'
 
+export default function LoginPage() {
   // 세준이가 추가한것
   function handleGoogleLogin() {
-  window.location.href = 'https://paper-agent-altv.onrender.com/auth/google'
+    window.location.href = `${API_BASE}/auth/google`
   }
 
   return (

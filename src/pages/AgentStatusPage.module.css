@@ -93,3 +93,9 @@
   text-underline-offset: 2px;
 }
 .pausedBoxLink:hover { opacity: 0.75; }
+
+.channelTag {
+  background: var(--border);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}

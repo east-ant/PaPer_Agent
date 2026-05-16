@@ -5,6 +5,8 @@ import { useAgentStore }    from '../store/agentStore'
 import { useBookmarkStore } from '../store/bookmarkStore'
 import styles from './ProfilePage.module.css'
 
+const API_BASE = import.meta.env.VITE_API_URL || 'https://paper-agent-altv.onrender.com'
+
 export default function ProfilePage() {
   const navigate           = useNavigate()
   const { resetAgent }     = useAgentStore()
@@ -14,7 +16,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem('ppa_token')
     if (!token) return
-    fetch(`https://paper-agent-altv.onrender.com/auth/me?token=${token}`)
+    fetch(`${API_BASE}/auth/me?token=${token}`)
       .then(res => res.json())
       .then(data => setUser(data))
   }, [])
