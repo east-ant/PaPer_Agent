@@ -28,8 +28,8 @@ export default function Topbar() {
   const status     = getAgentStatus(agent)
   const tab        = params.get('tab') || 'total'
   const cfg        = STATUS[status]
-  const hasDiscord = agent.notifications.discord.connected
-  const hasSlack   = agent.notifications.slack.connected
+  const hasDiscord = agent.notifications?.discord?.connected ?? false
+  const hasSlack   = agent.notifications?.slack?.connected ?? false
   const isDashboard = location.pathname === '/dashboard'
   const pageTitle   = PAGE_TITLES[location.pathname]
 

@@ -39,15 +39,15 @@ export default function AgentStepper() {
   // 취소 시 원복을 위한 마운트 시점 스냅샷
   const snapshot = useRef({
     ...agent,
-    keywords: [...agent.keywords],
-    sources:  [...agent.sources],
+    keywords: [...(agent.keywords ?? [])],
+    sources:  [...(agent.sources ?? [])],
     notifications: {
-      discord: { ...agent.notifications.discord },
-      slack:   { ...agent.notifications.slack },
+      discord: { ...(agent.notifications?.discord ?? {}) },
+      slack:   { ...(agent.notifications?.slack ?? {}) },
     },
   })
 
-  const hasNotification = agent.notifications.discord.connected || agent.notifications.slack.connected
+  const hasNotification = agent.notifications?.discord?.connected || agent.notifications?.slack?.connected
 
   const summaryLengthLabel = useMemo(() => {
     if (agent.summaryLength === 'short') return '초록만'
@@ -167,7 +167,7 @@ export default function AgentStepper() {
 
         {/* ── Step 1: 키워드 ── */}
         {step === 1 && (
-          <section className="animate-fade-up">
+          <section>
             <p className={`mb-0.5 text-xs font-medium uppercase tracking-widest ${styles.stepLabel}`}>step 1</p>
             <p className={`mb-4 text-lg font-normal ${styles.stepTitle}`}>
               어떤 논문을 받을지 설정합니다
@@ -243,7 +243,7 @@ export default function AgentStepper() {
 
         {/* ── Step 2: 소스 ── */}
         {step === 2 && (
-          <section className="animate-fade-up">
+          <section>
             <p className={`mb-0.5 text-xs font-medium uppercase tracking-widest ${styles.stepLabel}`}>step 2</p>
             <p className={`mb-1 text-lg font-normal ${styles.stepTitle}`}>
               어디서 수집할지 선택합니다
@@ -343,7 +343,7 @@ export default function AgentStepper() {
 
         {/* ── Step 3: 표시항목 ── */}
         {step === 3 && (
-          <section className="animate-fade-up">
+          <section>
             <p className={`mb-0.5 text-xs font-medium uppercase tracking-widest ${styles.stepLabel}`}>step 3</p>
             <p className={`mb-4 text-lg font-normal ${styles.stepTitle}`}>
               알림에 포함할 요약 범위를 정합니다
@@ -400,7 +400,7 @@ export default function AgentStepper() {
 
         {/* ── Step 4: 알림 ── */}
         {step === 4 && (
-          <section className="animate-fade-up">
+          <section>
             <p className={`mb-0.5 text-xs font-medium uppercase tracking-widest ${styles.stepLabel}`}>step 4</p>
             <p className={`mb-4 text-lg font-normal ${styles.stepTitle}`}>
               어디로 받을지 정합니다
@@ -435,7 +435,7 @@ export default function AgentStepper() {
                 { id: 'discord', label: 'Discord', desc: '서버 채널로 알림을 받습니다.' },
                 { id: 'slack',   label: 'Slack',   desc: '워크스페이스 채널로 알림을 받습니다.' },
               ].map(({ id, label, desc }) => {
-                const ch = agent.notifications[id]
+                const ch = agent.notifications?.[id] ?? { connected: false, lastTestStatus: null, lastTestAt: null }
                 return (
                   <div
                     key={id}
@@ -512,7 +512,7 @@ export default function AgentStepper() {
 
         {/* ── Step 5: 요약 ── */}
         {step === 5 && (
-          <section className="animate-fade-up">
+          <section>
             <p className={`mb-0.5 text-xs font-medium uppercase tracking-widest ${styles.stepLabel}`}>step 5</p>
             <p className={`mb-4 text-lg font-normal ${styles.stepTitle}`}>
               설정 요약
@@ -524,7 +524,7 @@ export default function AgentStepper() {
                 { label: '사이트',   value: agent.sources.map((id) => ALL_SOURCES.find((s) => s.id === id)?.label ?? id).join(', ') || '—', edit: 2 },
                 { label: '수집 기준', value: '최신순',                                                   edit: null },
                 { label: '언어',     value: agent.language === 'ko' ? '한국어' : agent.language === 'en' ? '영어' : '전체', edit: 2 },
-                { label: '알림',     value: [agent.notifications.discord.connected && 'Discord', agent.notifications.slack.connected && 'Slack'].filter(Boolean).join(' · ') + (hasNotification ? ' 연결됨' : '') || '미연결', edit: 4 },
+                { label: '알림',     value: [agent.notifications?.discord?.connected && 'Discord', agent.notifications?.slack?.connected && 'Slack'].filter(Boolean).join(' · ') + (hasNotification ? ' 연결됨' : '') || '미연결', edit: 4 },
                 { label: '수집 주기', value: agent.frequency === 'daily' ? '매일' : agent.frequency === '3days' ? '3일' : '주간', edit: 4 },
                 { label: '수집 수',  value: `${agent.collectCount}개`,                                 edit: 4 },
                 { label: '요약 범위', value: summaryLengthLabel,                                       edit: 3 },

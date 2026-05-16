@@ -25,8 +25,8 @@ export default function AgentStatusPage() {
   const status = getAgentStatus(agent)
   const cfg = STATUS_CFG[status]
 
-  const hasDiscord = agent.notifications.discord.connected
-  const hasSlack   = agent.notifications.slack.connected
+  const hasDiscord = agent.notifications?.discord?.connected ?? false
+  const hasSlack   = agent.notifications?.slack?.connected ?? false
   const hasNotification = hasDiscord || hasSlack
 
   function handleToggleActive() {
