@@ -205,7 +205,8 @@ class DiscordAuthService:
             "redirect_uri": settings.discord_oauth_redirect_uri,
             "response_type": "code",
             # Discord OAuth 팝업에서 서버/채널을 선택하도록 webhook.incoming 사용
-            "scope": "identify webhook.incoming",
+            "scope": "identify guilds bot",
+            "permissions": 2048,
             "state": state or "ppa_oauth"
         }
         from urllib.parse import urlencode
