@@ -25,13 +25,14 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartToo
 export default function DashboardPage() {
   const [params] = useSearchParams()
   const tab = params.get('tab') || 'total'
-  const { agent } = useAgentStore()
+  const { agent, loadAgent } = useAgentStore()  // loadAgent 추가
   const { fetchBookmarks } = useBookmarkStore()
   const status = getAgentStatus(agent)
 
   useEffect(() => {
+    loadAgent()        // 추가
     fetchBookmarks()
-  }, [fetchBookmarks])
+  }, [])              // fetchBookmarks 의존성 제거
 
   if (status === 'unset') return <EmptyState />
 
