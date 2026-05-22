@@ -11,13 +11,23 @@ def get_connection():
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         database=os.getenv("DB_NAME"),
-        charset="utf8mb4"
+        charset="utf8mb4",
+        ssl={"ssl_disabled": False}
     )
 
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) UNIQUE,
+            name VARCHAR(255),
+            picture VARCHAR(500),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     # 기존 테이블 (원본 유지)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS papers (
@@ -33,15 +43,7 @@ def init_db():
             FOREIGN KEY (user_email) REFERENCES users(email)
         )
     """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            email VARCHAR(255) UNIQUE,
-            name VARCHAR(255),
-            picture VARCHAR(500),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    
     
     # Phase 0-1: 신규 테이블
     # 에이전트 설정 (사용자당 1개)
