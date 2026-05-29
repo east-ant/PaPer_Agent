@@ -19,7 +19,7 @@ export default function AuthCallbackPage() {
     } else {
       navigate('/login', { replace: true })
     }
-  }, [])
+  }, [navigate])
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>

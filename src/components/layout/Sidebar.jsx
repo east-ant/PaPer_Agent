@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useAgentStore }    from '../../store/agentStore'
 import { useBookmarkStore } from '../../store/bookmarkStore'
+import { clearAuth }        from '../../utils/auth'
 import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
@@ -25,7 +26,7 @@ export default function Sidebar({ isOpen, onToggle }) {
   const { clearBookmarks } = useBookmarkStore()
 
   function handleLogout() {
-    localStorage.removeItem('ppa_logged_in')
+    clearAuth()
     resetAgent()
     clearBookmarks()
     navigate('/login')

@@ -44,6 +44,7 @@ export default function AgentStepper() {
     notifications: {
       discord: { ...(agent.notifications?.discord ?? {}) },
       slack:   { ...(agent.notifications?.slack ?? {}) },
+      email:   { ...(agent.notifications?.email ?? {}) },
     },
   })
 
