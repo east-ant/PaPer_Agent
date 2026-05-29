@@ -65,7 +65,7 @@ export default function LoginPage() {
         setError({ type: 'wrong', msg: `잘못된 인증 코드입니다${left !== null ? ` (${left}회 남음)` : ''}` })
       }
     } catch {
-      setError({ type: 'wrong', msg: '인증 확인 중 오류가 발생했습니다' })
+      setError({ type: 'send_fail', msg: '오류가 발생했습니다 잠시 후 다시 시도해주세요' })
     } finally {
       setLoading(false)
     }
