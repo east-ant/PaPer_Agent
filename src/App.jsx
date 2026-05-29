@@ -7,8 +7,11 @@ import AgentStatusPage  from './pages/AgentStatusPage'
 import ProfilePage      from './pages/ProfilePage'
 import LoadingPage      from './pages/LoadingPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
+import NotFoundPage     from './pages/NotFoundPage'
+import ErrorBoundary    from './components/ErrorBoundary'
 import Sidebar          from './components/layout/Sidebar'
 import Topbar           from './components/layout/Topbar'
+import { isLoggedIn }   from './utils/auth'
 
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -22,7 +25,9 @@ function Layout() {
       >
         <Topbar />
         <div className="flex flex-1 flex-col" style={{ background: 'var(--bg-primary)' }}>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </div>
     </div>
@@ -30,8 +35,7 @@ function Layout() {
 }
 
 function ProtectedRoute() {
-  const isLoggedIn = localStorage.getItem('ppa_logged_in') === 'true'
-  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (!isLoggedIn()) return <Navigate to="/login" replace />
   return <Layout />
 }
 
@@ -41,7 +45,7 @@ export default function App() {
       <Routes>
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/login"         element={<LoginPage />} />
-        <Route path="/loading" element={<LoadingPage />} />
+        <Route path="/loading"       element={<LoadingPage />} />
         <Route path="/" element={<ProtectedRoute />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard"    element={<DashboardPage />} />
@@ -49,6 +53,8 @@ export default function App() {
           <Route path="agent/status" element={<AgentStatusPage />} />
           <Route path="profile"      element={<ProfilePage />} />
         </Route>
+        {/* 매칭되지 않는 모든 경로 → 404 */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )
