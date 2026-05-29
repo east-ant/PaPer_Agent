@@ -19,8 +19,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartTooltip)
 
-// 백엔드 연결 시: fetchTrend(period) 로 교체
-// 주별은 mock.js의 trend/trendLabels와 동기화, 월별/년별은 독립 mock
 const TREND_SETS = {
   '주별': { data: mockStats.trend, labels: mockStats.trendLabels },
   '월별': { data: [45, 88, 120, 95, 140, 185, 210, 178, 240, 290, 265, 340], labels: ['7월','8월','9월','10월','11월','12월','1월','2월','3월','4월','5월','6월'] },

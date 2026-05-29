@@ -11,7 +11,6 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // 백엔드 연결 시 에러 로깅 서비스로 전송 가능
     console.error('[ErrorBoundary]', error, info)
   }
 

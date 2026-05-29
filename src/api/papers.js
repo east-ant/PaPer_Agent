@@ -1,15 +1,9 @@
 // ── 논문 API ──────────────────────────────────────────
-// 백엔드 연결 시 아래 TODO 주석을 실제 fetch 로 교체합니다.
-// 반환 구조(shape)는 유지 — 컴포넌트 코드 변경 없음.
-
 import { mockPapers, mockStats } from '../data/mock'
 
 /**
  * 논문 목록 조회
  * @param {{ limit?: number, sort?: 'latest' | 'trending' }} options
- * @returns {Promise<Paper[]>}
- *
- * TODO: return await fetch(`/api/papers?sort=${sort}&limit=${limit}`).then((r) => r.json())
  */
 export async function fetchPapers({ limit = 10, sort = 'latest' } = {}) {
   const sorted =
@@ -19,12 +13,7 @@ export async function fetchPapers({ limit = 10, sort = 'latest' } = {}) {
   return sorted.slice(0, limit)
 }
 
-/**
- * KPI 통계 조회
- * @returns {Promise<Stats>}
- *
- * TODO: return await fetch('/api/stats').then((r) => r.json())
- */
+/** KPI 통계 조회 */
 export async function fetchStats() {
   return mockStats
 }
@@ -32,9 +21,6 @@ export async function fetchStats() {
 /**
  * 트렌드 차트 데이터 조회
  * @param {'weekly' | 'monthly' | 'yearly'} period
- * @returns {Promise<{ data: number[], labels: string[] }>}
- *
- * TODO: return await fetch(`/api/stats/trend?period=${period}`).then((r) => r.json())
  */
 export async function fetchTrend(period = 'weekly') {
   const map = {

@@ -7,7 +7,6 @@ import styles from './AgentStepper.module.css'
 const MAX_KEYWORDS = 5
 const steps = ['키워드', '소스', '표시항목', '알림', '요약']
 
-// 백엔드 연결 시 API로 대체될 소스 목록
 const ALL_SOURCES = [
   { id: 'arxiv',    label: 'arXiv',           region: '해외', desc: '출판 전에 미리 공개되는 논문을 모아두는 곳이에요. AI·수학·과학 분야의 최신 연구를 가장 빠르게 받아볼 수 있어요.' },
   { id: 'crossref', label: 'Crossref',         region: '해외', desc: '학술지나 학회에 정식으로 실린 논문들을 모아둔 곳이에요. 검증된 연구 결과물을 찾을 때 좋아요.' },
@@ -15,7 +14,6 @@ const ALL_SOURCES = [
   { id: 'core',     label: 'CORE',             region: '해외', desc: '무료로 전문을 읽을 수 있는 논문만 모아둔 곳이에요. 로그인 없이 바로 읽을 수 있는 논문들이에요.' },
 ]
 
-// 추천 키워드 (백엔드 연결 시 인기 키워드 API로 대체)
 const SUGGESTED_KEYWORDS = [
   'LLM', 'RAG', 'Transformer', 'Computer Vision',
   'Diffusion Model', 'Reinforcement Learning', 'NLP', 'GNN',
@@ -424,10 +422,6 @@ export default function AgentStepper() {
                   </li>
                 ))}
               </ol>
-              {/* TODO: 백엔드 연결 후 이 안내 문구 제거 */}
-              <p className={`mt-2 text-xs ${styles.guideMock}`}>
-                현재는 mock 동작 — 백엔드 구현 후 활성화됩니다.
-              </p>
             </div>
 
             {/* 채널 카드 */}
@@ -459,7 +453,6 @@ export default function AgentStepper() {
                         )}
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1.5">
-                        {/* TODO: 백엔드 연결 시 connectNotification(id) → OAuth 팝업 트리거로 교체 */}
                         <button
                           onClick={() => !ch.connected && connectNotification(id)}
                           disabled={ch.connected}

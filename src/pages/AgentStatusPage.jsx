@@ -11,7 +11,6 @@ const SOURCE_LABELS = {
   core:     'CORE',
 }
 
-// 백엔드 연결 시 이 데이터는 API 응답으로 대체됩니다
 const LAST_COLLECTED = '2024.06.10 오전 09:00'
 
 const STATUS_CFG = {
