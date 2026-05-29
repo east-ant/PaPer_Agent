@@ -9,7 +9,8 @@ const initialAgent = {
   collectCount: 5,
   notifications: {
     discord: { connected: false, lastTestStatus: null, lastTestAt: null },
-    slack: { connected: false, lastTestStatus: null, lastTestAt: null },
+    slack:   { connected: false, lastTestStatus: null, lastTestAt: null },
+    email:   { connected: false, lastTestStatus: null, lastTestAt: null },
   },
   frequency: 'daily',
   isConfigured: false,
@@ -113,6 +114,10 @@ export const useAgentStore = create(
             slack: {
               ...current.agent.notifications.slack,
               ...persisted.agent?.notifications?.slack,
+            },
+            email: {
+              ...current.agent.notifications.email,
+              ...persisted.agent?.notifications?.email,
             },
           },
         },

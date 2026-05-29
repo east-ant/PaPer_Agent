@@ -47,7 +47,7 @@ export default function AgentStepper() {
     },
   })
 
-  const hasNotification = agent.notifications?.discord?.connected || agent.notifications?.slack?.connected
+  const hasNotification = agent.notifications?.discord?.connected || agent.notifications?.slack?.connected || agent.notifications?.email?.connected
 
   const summaryLengthLabel = useMemo(() => {
     if (agent.summaryLength === 'short') return '초록만'
@@ -434,6 +434,7 @@ export default function AgentStepper() {
               {[
                 { id: 'discord', label: 'Discord', desc: '서버 채널로 알림을 받습니다.' },
                 { id: 'slack',   label: 'Slack',   desc: '워크스페이스 채널로 알림을 받습니다.' },
+                { id: 'email',   label: '이메일',  desc: '가입한 이메일 주소로 알림을 받습니다.' },
               ].map(({ id, label, desc }) => {
                 const ch = agent.notifications?.[id] ?? { connected: false, lastTestStatus: null, lastTestAt: null }
                 return (
@@ -524,7 +525,7 @@ export default function AgentStepper() {
                 { label: '사이트',   value: agent.sources.map((id) => ALL_SOURCES.find((s) => s.id === id)?.label ?? id).join(', ') || '—', edit: 2 },
                 { label: '수집 기준', value: '최신순',                                                   edit: null },
                 { label: '언어',     value: agent.language === 'ko' ? '한국어' : agent.language === 'en' ? '영어' : '전체', edit: 2 },
-                { label: '알림',     value: [agent.notifications?.discord?.connected && 'Discord', agent.notifications?.slack?.connected && 'Slack'].filter(Boolean).join(' · ') + (hasNotification ? ' 연결됨' : '') || '미연결', edit: 4 },
+                { label: '알림',     value: [agent.notifications?.discord?.connected && 'Discord', agent.notifications?.slack?.connected && 'Slack', agent.notifications?.email?.connected && '이메일'].filter(Boolean).join(' · ') || '미연결', edit: 4 },
                 { label: '수집 주기', value: agent.frequency === 'daily' ? '매일' : agent.frequency === '3days' ? '3일' : '주간', edit: 4 },
                 { label: '수집 수',  value: `${agent.collectCount}개`,                                 edit: 4 },
                 { label: '요약 범위', value: summaryLengthLabel,                                       edit: 3 },
