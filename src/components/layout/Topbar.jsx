@@ -30,6 +30,7 @@ export default function Topbar() {
   const cfg        = STATUS[status]
   const hasDiscord = agent.notifications?.discord?.connected ?? false
   const hasSlack   = agent.notifications?.slack?.connected ?? false
+  const hasEmail   = agent.notifications?.email?.connected ?? false
   const isDashboard = location.pathname === '/dashboard'
   const pageTitle   = PAGE_TITLES[location.pathname]
 
@@ -80,6 +81,7 @@ export default function Topbar() {
             <div className={`mt-3 space-y-2 pt-3 ${styles.popoverDivider}`}>
               <StatusRow label="Discord" active={hasDiscord} />
               <StatusRow label="Slack"   active={hasSlack} />
+              <StatusRow label="이메일"  active={hasEmail} />
             </div>
           )}
           {status === 'active' && (

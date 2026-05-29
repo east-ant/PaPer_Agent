@@ -27,7 +27,8 @@ export default function AgentStatusPage() {
 
   const hasDiscord = agent.notifications?.discord?.connected ?? false
   const hasSlack   = agent.notifications?.slack?.connected ?? false
-  const hasNotification = hasDiscord || hasSlack
+  const hasEmail   = agent.notifications?.email?.connected ?? false
+  const hasNotification = hasDiscord || hasSlack || hasEmail
 
   function handleToggleActive() {
     if (agent.isActive) {
@@ -41,7 +42,7 @@ export default function AgentStatusPage() {
     status === 'active'
       ? `수집과 알림이 정상 작동 중입니다. 마지막 수집: ${LAST_COLLECTED}`
       : status === 'paused'
-        ? (!hasDiscord && !hasSlack
+        ? (!hasNotification
             ? '알림 채널이 미연결 상태로 수집이 중단되었습니다.'
             : '에이전트가 비활성화 상태입니다.')
         : null
@@ -103,7 +104,7 @@ export default function AgentStatusPage() {
           {status === 'paused' && (
             <div className={`mt-3 rounded-lg p-3 ${styles.pausedBox}`}>
               <p className={`mb-2 text-xs ${styles.pausedBoxDesc}`}>
-                {!hasDiscord && !hasSlack
+                {!hasNotification
                   ? '알림 채널을 연결하면 에이전트가 자동으로 활성화됩니다.'
                   : '에이전트 설정을 수정해 다시 활성화할 수 있습니다.'}
               </p>
@@ -144,6 +145,7 @@ export default function AgentStatusPage() {
             {[
               { label: 'Discord', active: hasDiscord },
               { label: 'Slack',   active: hasSlack },
+              { label: '이메일',  active: hasEmail },
             ].map(({ label, active }, i) => (
               <div
                 key={label}

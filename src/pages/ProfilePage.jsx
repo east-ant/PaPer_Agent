@@ -3,31 +3,64 @@ import { useNavigate } from 'react-router-dom'
 import { User, Mail, Calendar, LogOut } from 'lucide-react'
 import { useAgentStore }    from '../store/agentStore'
 import { useBookmarkStore } from '../store/bookmarkStore'
+import { clearAuth }        from '../utils/auth'
 import styles from './ProfilePage.module.css'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://paper-agent-altv.onrender.com'
 
 export default function ProfilePage() {
   const navigate           = useNavigate()
   const { resetAgent }     = useAgentStore()
   const { clearBookmarks } = useBookmarkStore()
   const [user, setUser]    = useState(null)
+  const [error, setError]  = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('ppa_token')
-    if (!token) return
-    fetch(`https://paper-agent-altv.onrender.com/auth/me?token=${token}`)
-      .then(res => res.json())
-      .then(data => setUser(data))
-  }, [])
+    if (!token) {
+      clearAuth()
+      navigate('/login', { replace: true })
+      return
+    }
+    fetch(`${API_BASE}/auth/me?token=${token}`)
+      .then(res => {
+        if (res.status === 401) { clearAuth(); navigate('/login', { replace: true }); return null }
+        if (!res.ok) throw new Error('fetch failed')
+        return res.json()
+      })
+      .then(data => { if (data) setUser(data) })
+      .catch(() => setError(true))
+  }, [navigate])
 
   function handleLogout() {
-    localStorage.removeItem('ppa_logged_in')
-    localStorage.removeItem('ppa_token')
+    clearAuth()
     resetAgent()
     clearBookmarks()
     navigate('/login')
   }
 
-  if (!user) return null
+  if (error) return (
+    <main className="flex flex-1 items-center justify-center p-4">
+      <div className="text-center">
+        <p className="mb-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>사용자 정보를 불러올 수 없습니다</p>
+        <p className="mb-4 text-xs" style={{ color: 'var(--text-secondary)' }}>잠시 후 다시 시도해주세요.</p>
+        <button
+          type="button"
+          onClick={() => { clearAuth(); resetAgent(); clearBookmarks(); navigate('/login') }}
+          className="rounded-lg px-4 py-2 text-xs font-medium"
+          style={{ background: 'var(--bg-dark)', color: 'var(--text-on-dark)' }}
+        >
+          로그인으로 이동
+        </button>
+      </div>
+    </main>
+  )
+
+  if (!user) return (
+    <main className="flex flex-1 items-center justify-center p-4">
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>불러오는 중...</p>
+    </main>
+  )
 
   const rows = [
     { icon: User,     label: '이름',   value: user.name },
