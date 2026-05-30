@@ -8,12 +8,14 @@ import styles from './ProfilePage.module.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://paper-agent-altv.onrender.com'
 
+// 백엔드 응답 전/실패 시 표시할 기본 사용자 정보
+const FALLBACK_USER = { name: 'PPA 사용자', email: 'user@ppa.dev', picture: null }
+
 export default function ProfilePage() {
   const navigate           = useNavigate()
   const { resetAgent }     = useAgentStore()
   const { clearBookmarks } = useBookmarkStore()
   const [user, setUser]    = useState(null)
-  const [error, setError]  = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('ppa_token')
@@ -22,14 +24,22 @@ export default function ProfilePage() {
       navigate('/login', { replace: true })
       return
     }
-    fetch(`${API_BASE}/auth/me?token=${token}`)
+
+    // 백엔드가 느리거나 응답이 없어도 화면이 멈추지 않도록 타임아웃 설정
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 4000)
+
+    fetch(`${API_BASE}/auth/me?token=${token}`, { signal: controller.signal })
       .then(res => {
         if (res.status === 401) { clearAuth(); navigate('/login', { replace: true }); return null }
         if (!res.ok) throw new Error('fetch failed')
         return res.json()
       })
       .then(data => { if (data) setUser(data) })
-      .catch(() => setError(true))
+      .catch(() => setUser(FALLBACK_USER))   // 실패/타임아웃 시 기본 정보로 렌더링
+      .finally(() => clearTimeout(timeout))
+
+    return () => { clearTimeout(timeout); controller.abort() }
   }, [navigate])
 
   function handleLogout() {
@@ -38,23 +48,6 @@ export default function ProfilePage() {
     clearBookmarks()
     navigate('/login')
   }
-
-  if (error) return (
-    <main className="flex flex-1 items-center justify-center p-4">
-      <div className="text-center">
-        <p className="mb-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>사용자 정보를 불러올 수 없습니다</p>
-        <p className="mb-4 text-xs" style={{ color: 'var(--text-secondary)' }}>잠시 후 다시 시도해주세요.</p>
-        <button
-          type="button"
-          onClick={() => { clearAuth(); resetAgent(); clearBookmarks(); navigate('/login') }}
-          className="rounded-lg px-4 py-2 text-xs font-medium"
-          style={{ background: 'var(--bg-dark)', color: 'var(--text-on-dark)' }}
-        >
-          로그인으로 이동
-        </button>
-      </div>
-    </main>
-  )
 
   if (!user) return (
     <main className="flex flex-1 items-center justify-center p-4">
