@@ -31,6 +31,13 @@ except ImportError as e:
     print(f"[notice/service.py] agent import failed: {e}")
     translate_abstract = summarize_body = read_paper_pdf = is_relevant = None
 
+try:
+    from agent_runner import run_paper_agent
+    print("[notice/service.py] agent_runner import success")
+except ImportError as e:
+    print(f"[notice/service.py] agent_runner import failed: {e}")
+    run_paper_agent = None
+
 class NoticeService:
     def __init__(self):
         pass
@@ -152,7 +159,14 @@ class NoticeService:
             print(f"발송 기록 저장 실패: {e}")
 
     @staticmethod
-    def collect_papers(keywords_list: list, sources: list, collect_count: int, user_email: str = None) -> list:
+    def collect_papers(
+        keywords_list: list,
+        sources: list,
+        collect_count: int,
+        user_email: str = None,
+        language: str = None,
+        summary_length: str = None,
+    ) -> list:
         """
         설정에 맞게 논문 수집 + 초록 번역 + 본문 요약
         user_email이 있으면 중복 발송 방지 필터링 적용
@@ -164,6 +178,43 @@ class NoticeService:
         sent_history = set()
         if user_email:
             sent_history = NoticeService.get_sent_papers(user_email)
+
+        language = language or "ko"
+        summary_length = summary_length or "medium"
+        if user_email and (language == "ko" or summary_length == "medium"):
+            try:
+                conn = get_connection()
+                cursor = conn.cursor(pymysql.cursors.DictCursor)
+                cursor.execute(
+                    "SELECT language, summary_length FROM agent_configs WHERE user_email=%s LIMIT 1",
+                    (user_email,)
+                )
+                config_row = cursor.fetchone()
+                conn.close()
+                if config_row:
+                    language = config_row.get("language") or language
+                    summary_length = config_row.get("summary_length") or summary_length
+            except Exception as e:
+                print(f"[PaperAgentRunner] config lookup failed: {e}")
+
+        if run_paper_agent:
+            try:
+                agent_result = run_paper_agent(
+                    keywords=keywords_list,
+                    sources=sources,
+                    collect_count=collect_count,
+                    user_email=user_email,
+                    sent_keys=sent_history,
+                    language=language,
+                    summary_length=summary_length,
+                )
+                agent_papers = agent_result.get("papers", [])
+                if agent_papers:
+                    print(f"[PaperAgentRunner] selected {len(agent_papers)} papers")
+                    return agent_papers
+                print("[PaperAgentRunner] no papers selected, falling back to legacy collection")
+            except Exception as e:
+                print(f"[PaperAgentRunner] failed, falling back to legacy collection: {e}")
         
         try:
             papers = []
