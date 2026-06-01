@@ -27,14 +27,13 @@ const TREND_SETS = {
 export default function DashboardPage() {
   const [params] = useSearchParams()
   const tab = params.get('tab') || 'total'
-  const { agent, loadAgent } = useAgentStore()  // loadAgent 추가
+  const { agent } = useAgentStore()
   const { fetchBookmarks } = useBookmarkStore()
   const status = getAgentStatus(agent)
 
   useEffect(() => {
-    loadAgent()        // 추가
     fetchBookmarks()
-  }, [])              // fetchBookmarks 의존성 제거
+  }, [fetchBookmarks])
 
   if (status === 'unset') return <EmptyState />
 
