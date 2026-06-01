@@ -1,8 +1,9 @@
-import { apiCall } from './agent'
+// ── 논문 API ──────────────────────────────────────────
+import { mockPapers, mockStats } from '../data/mock'
 
 /**
- * 논문 목록 조회 (GET /papers)
- * DB에 수집된 사용자 논문을 가져옴
+ * 논문 목록 조회
+ * @param {{ limit?: number, sort?: 'latest' | 'trending' }} options
  */
 export async function fetchPapers({ limit = 10, sort = 'latest' } = {}) {
   try {
@@ -32,9 +33,7 @@ export async function fetchPapers({ limit = 10, sort = 'latest' } = {}) {
   }
 }
 
-/**
- * KPI 통계 조회 (GET /api/notice/stats)
- */
+/** KPI 통계 조회 */
 export async function fetchStats() {
   const defaultStats = {
     totalPapers: 0,
@@ -53,7 +52,8 @@ export async function fetchStats() {
 }
 
 /**
- * 트렌드 차트 데이터 조회 (GET /api/notice/stats/trend)
+ * 트렌드 차트 데이터 조회
+ * @param {'weekly' | 'monthly' | 'yearly'} period
  */
 export async function fetchTrend(period = 'weekly') {
   try {

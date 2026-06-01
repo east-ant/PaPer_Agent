@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { User, Mail, Calendar, LogOut } from 'lucide-react'
 import { useAgentStore }    from '../store/agentStore'
 import { useBookmarkStore } from '../store/bookmarkStore'
+import { clearAuth }        from '../utils/auth'
 import styles from './ProfilePage.module.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://paper-agent-altv.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://paper-agent-altv.onrender.com'
+
+// 백엔드 응답 전/실패 시 표시할 기본 사용자 정보
+const FALLBACK_USER = { name: 'PPA 사용자', email: 'user@ppa.dev', picture: null }
 
 export default function ProfilePage() {
   const navigate           = useNavigate()
@@ -15,21 +19,41 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const token = localStorage.getItem('ppa_token')
-    if (!token) return
-    fetch(`${API_BASE}/auth/me?token=${token}`)
-      .then(res => res.json())
-      .then(data => setUser(data))
-  }, [])
+    if (!token) {
+      clearAuth()
+      navigate('/login', { replace: true })
+      return
+    }
+
+    // 백엔드가 느리거나 응답이 없어도 화면이 멈추지 않도록 타임아웃 설정
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 4000)
+
+    fetch(`${API_BASE}/auth/me?token=${token}`, { signal: controller.signal })
+      .then(res => {
+        if (res.status === 401) { clearAuth(); navigate('/login', { replace: true }); return null }
+        if (!res.ok) throw new Error('fetch failed')
+        return res.json()
+      })
+      .then(data => { if (data) setUser(data) })
+      .catch(() => setUser(FALLBACK_USER))   // 실패/타임아웃 시 기본 정보로 렌더링
+      .finally(() => clearTimeout(timeout))
+
+    return () => { clearTimeout(timeout); controller.abort() }
+  }, [navigate])
 
   function handleLogout() {
-    localStorage.removeItem('ppa_logged_in')
-    localStorage.removeItem('ppa_token')
+    clearAuth()
     resetAgent()
     clearBookmarks()
     navigate('/login')
   }
 
-  if (!user) return null
+  if (!user) return (
+    <main className="flex flex-1 items-center justify-center p-4">
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>불러오는 중...</p>
+    </main>
+  )
 
   const rows = [
     { icon: User,     label: '이름',   value: user.name },

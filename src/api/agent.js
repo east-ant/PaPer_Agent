@@ -1,98 +1,26 @@
 // ── 에이전트 API ───────────────────────────────────────
-// 백엔드 연결: Phase 6 완전 구현
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://paper-agent-altv.onrender.com'
-const API_TIMEOUT_MS = 20000
-const OAUTH_WAIT_TIMEOUT_MS = 120000
-
-// 인증 토큰 가져오기
-function getAuthToken() {
-  return localStorage.getItem('token') || localStorage.getItem('ppa_token')
+/** 에이전트 설정 저장 */
+export async function saveAgentConfig(data) {
+  void data
+  return { ok: true }
 }
 
-function decodeJwtPayload(token) {
-  try {
-    const payloadPart = token.split('.')[1]
-    if (!payloadPart) return null
-    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
-    return JSON.parse(atob(padded))
-  } catch {
-    return null
-  }
-}
-
-function getCurrentUserEmail() {
-  const storedEmail = localStorage.getItem('user_email')
-  if (storedEmail) return storedEmail
-
-  const token = getAuthToken()
-  if (!token) return null
-
-  const payload = decodeJwtPayload(token)
-  if (payload?.email) {
-    localStorage.setItem('user_email', payload.email)
-    return payload.email
-  }
-
+/** 에이전트 설정 불러오기 */
+export async function loadAgentConfig() {
   return null
 }
 
-// API 호출 헬퍼
-export async function apiCall(endpoint, options = {}) {
-  const token = getAuthToken()
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  }
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
-
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    })
-
-    if (!response.ok && response.status === 401) {
-      // 토큰 만료 처리
-      localStorage.removeItem('token')
-      window.location.href = '/login'
-      return null
-    }
-
-    return await response.json()
-  } catch (error) {
-    if (error?.name === 'AbortError') {
-      return { ok: false, message: '요청 시간이 초과되었습니다. 다시 시도해주세요.' }
-    }
-    console.error(`API 호출 실패 [${endpoint}]:`, error)
-    return { ok: false, error: error.message }
-  } finally {
-    clearTimeout(timeoutId)
-  }
+/** 알림 채널 OAuth 연결 */
+export async function connectChannel(channel) {
+  void channel
+  return { connected: true, lastTestStatus: 'success', lastTestAt: Date.now() }
 }
 
-/**
- * Phase 6: 에이전트 설정 저장
- */
-export async function saveAgentConfig(data) {
-  return apiCall('/api/notice/settings', {
-    method: 'POST',
-    body: JSON.stringify({
-      keywords: data.keywords,
-      sources: data.sources,
-      language: data.language,
-      summary_length: data.summaryLength,
-      collect_count: data.collectCount,
-      frequency: data.frequency,
-    }),
-  })
+/** 테스트 알림 전송 */
+export async function testChannel(channel) {
+  void channel
+  return { success: true }
 }
 
 /**

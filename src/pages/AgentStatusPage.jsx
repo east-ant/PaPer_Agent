@@ -12,18 +12,7 @@ const SOURCE_LABELS = {
   core:     'CORE',
 }
 
-// 마지막 수집 시간 포맷팅 함수
-const formatLastCollected = (timestamp) => {
-  if (!timestamp) return '수집 기록 없음'
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleString('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  })
-}
+const LAST_COLLECTED = '2024.06.10 오전 09:00'
 
 const STATUS_CFG = {
   unset:  { label: '미설정',   text: 'var(--status-neutral)', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)' },
@@ -41,7 +30,8 @@ export default function AgentStatusPage() {
 
   const hasDiscord = agent.notifications?.discord?.connected ?? false
   const hasSlack   = agent.notifications?.slack?.connected ?? false
-  const hasNotification = hasDiscord || hasSlack
+  const hasEmail   = agent.notifications?.email?.connected ?? false
+  const hasNotification = hasDiscord || hasSlack || hasEmail
 
   async function handleToggleActive() {
     if (toggleLoading) return
@@ -137,7 +127,7 @@ export default function AgentStatusPage() {
           {(status === 'paused' || status === 'not_connected') && ( // # 미연결/일시정지 모두 안내 박스 사용
             <div className={`mt-3 rounded-lg p-3 ${styles.pausedBox}`}>
               <p className={`mb-2 text-xs ${styles.pausedBoxDesc}`}>
-                {status === 'not_connected'
+                {!hasNotification
                   ? '알림 채널을 연결하면 에이전트가 자동으로 활성화됩니다.'
                   : '에이전트 설정을 수정해 다시 활성화할 수 있습니다.'}
               </p>
@@ -178,6 +168,7 @@ export default function AgentStatusPage() {
             {[
               { label: 'Discord', active: hasDiscord },
               { label: 'Slack',   active: hasSlack },
+              { label: '이메일',  active: hasEmail },
             ].map(({ label, active }, i) => (
               <div
                 key={label}

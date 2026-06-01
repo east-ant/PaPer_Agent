@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
     } else {
       window.location.href = '/login'
     }
-  }, [])
+  }, [navigate])
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>

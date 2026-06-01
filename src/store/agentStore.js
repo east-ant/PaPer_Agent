@@ -10,7 +10,8 @@ const initialAgent = {
   collectCount: 5,
   notifications: {
     discord: { connected: false, lastTestStatus: null, lastTestAt: null },
-    slack: { connected: false, lastTestStatus: null, lastTestAt: null },
+    slack:   { connected: false, lastTestStatus: null, lastTestAt: null },
+    email:   { connected: false, lastTestStatus: null, lastTestAt: null },
   },
   frequency: 'daily',
   isConfigured: false,
@@ -198,6 +199,30 @@ export const useAgentStore = create(
     {
       name: 'ppa-agent-store',
       partialize: (state) => ({ agent: state.agent }),
+      // localStorage 구버전 데이터와 새 initialAgent 구조를 안전하게 병합
+      merge: (persisted, current) => ({
+        ...current,
+        agent: {
+          ...current.agent,
+          ...persisted.agent,
+          notifications: {
+            ...current.agent.notifications,
+            ...persisted.agent?.notifications,
+            discord: {
+              ...current.agent.notifications.discord,
+              ...persisted.agent?.notifications?.discord,
+            },
+            slack: {
+              ...current.agent.notifications.slack,
+              ...persisted.agent?.notifications?.slack,
+            },
+            email: {
+              ...current.agent.notifications.email,
+              ...persisted.agent?.notifications?.email,
+            },
+          },
+        },
+      }),
     },
   ),
 )
