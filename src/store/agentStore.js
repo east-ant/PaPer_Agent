@@ -52,7 +52,7 @@ export const useAgentStore = create(
       connectNotification: async (channel) => {
         if (channel === 'discord') {
           const result = await agentAPI.connectDiscord()
-          if (result.ok || result.connected) {
+          if (result.connected) {
             set((state) => ({
               agent: {
                 ...state.agent,
@@ -69,14 +69,44 @@ export const useAgentStore = create(
           }
           return result
         }
+
+        if (channel === 'slack') {
+          const result = await agentAPI.connectSlack()
+          if (result.connected) {
+            set((state) => ({
+              agent: {
+                ...state.agent,
+                notifications: {
+                  ...state.agent.notifications,
+                  slack: {
+                    connected: true,
+                    lastTestStatus: result.lastTestStatus || null,
+                    lastTestAt: result.lastTestAt || null,
+                  },
+                },
+              },
+            }))
+          }
+          return result
+        }
+
+        return { ok: false, message: `알 수 없는 채널입니다: ${channel}` }
       },
 
       getDiscordChannels: async () => {
         return await agentAPI.getDiscordChannels()
       },
+      // 5/22일 #slack 추가 (Slack 채널 목록 조회)
+      getSlackChannels: async () => {
+        return await agentAPI.getSlackChannels() // #slack 추가 (Slack 채널 목록 조회)
+      },
 
       selectDiscordChannel: async ({ guildId, channelId }) => {
         return await agentAPI.selectDiscordChannel({ guildId, channelId })
+      },
+      // 5/22일 #slack 추가 (Slack 채널 선택)
+      selectSlackChannel: async ({ workspaceId, channelId }) => {
+        return await agentAPI.selectSlackChannel({ workspaceId, channelId }) // #slack 추가 (Slack 채널 저장)
       },
 
       disconnectNotification: async (channel) => {
@@ -104,6 +134,10 @@ export const useAgentStore = create(
         let result
         if (channel === 'discord') {
           result = await agentAPI.testDiscord()
+        }
+        // 5/22일 #slack 추가 (Slack 테스트 발송)
+        if (channel === 'slack') {
+          result = await agentAPI.testSlack() 
         }
         if (result && result.ok) {
           set((state) => ({
