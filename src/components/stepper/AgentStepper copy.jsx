@@ -1,4 +1,193 @@
-// import { useMemo, useRef, useState } from 'react' // 기존
+/*
+ AgentStepper copy.jsx — 대체본(임시 보관용)
+
+ 원본 파일: frontend/src/components/stepper/AgentStepper.jsx
+ 생성일: 2026-05-22
+
+ 아래는 변경된 핵심 블록의 "수정 전(원본)"과 "수정 후(슬랙 추가)" 전체 코드 스니펫입니다.
+
+ 1) 스토어 액션 선언
+ 수정 전 (원본: Discord만 사용):
+ // useAgentStore() 에서
+ getDiscordChannels, // #기존 디스코드
+ selectDiscordChannel, // #기존 디스코드
+
+ 수정 후 (슬랙 추가):
+ // useAgentStore() 에서
+ getDiscordChannels, // #기존 디스코드
+ selectDiscordChannel, // #기존 디스코드
+ getSlackChannels, // #slack 추가 (Slack 채널 목록 로드) 5/22
+ selectSlackChannel, // #slack 추가 (Slack 채널 저장) 5/22
+
+ 2) 상태 선언
+ 수정 전:
+ const [discordChannels, setDiscordChannels] = useState([])
+ const [selectedDiscordChannels, setSelectedDiscordChannels] = useState([])
+
+ 수정 후:
+ const [discordChannels, setDiscordChannels] = useState([]) // #추가
+ const [selectedDiscordChannels, setSelectedDiscordChannels] = useState([]) // #추가
+ const [slackChannels, setSlackChannels] = useState([]) // #slack 추가 (Slack 채널 목록)
+ const [selectedSlackChannel, setSelectedSlackChannel] = useState('') // #slack 추가 (Slack 단일 선택)
+ const [selectedSlackWorkspaceId, setSelectedSlackWorkspaceId] = useState('') // #slack 추가 (Slack 워크스페이스 식별)
+ const [savingChannel, setSavingChannel] = useState(false) // #추가
+ const [channelAction, setChannelAction] = useState({ type: null, id: null }) // #추가
+
+ 3) loadChannels (useEffect 내)
+ 수정 전 (Discord만 로드):
+ async function loadChannels() {
+   if (step !== 4) return
+
+   if (agent.notifications?.discord?.connected) {
+     const result = await getDiscordChannels()
+     if (result?.ok) {
+       const channels = Array.isArray(result.channels) ? result.channels : []
+       setDiscordChannels(channels)
+       if (result.discord_channel_ids) {
+         setSelectedDiscordChannels(result.discord_channel_ids.map(String))
+       } else if (result.selected_channel_id) {
+         setSelectedDiscordChannels([String(result.selected_channel_id)])
+       }
+     }
+   }
+ }
+
+ 수정 후 (Slack 로직 추가):
+ async function loadChannels() {
+   if (step !== 4) return
+
+   if (agent.notifications?.discord?.connected) {
+     const result = await getDiscordChannels()
+     if (result?.ok) {
+       const channels = Array.isArray(result.channels) ? result.channels : []
+       setDiscordChannels(channels)
+       if (result.discord_channel_ids) {
+         setSelectedDiscordChannels(result.discord_channel_ids.map(String))
+       } else if (result.selected_channel_id) {
+         setSelectedDiscordChannels([String(result.selected_channel_id)])
+       }
+     }
+   }
+
+   if (agent.notifications?.slack?.connected) {
+     const result = await getSlackChannels() // #slack 추가 (Slack 연결 시 채널 목록 로드)
+     if (result?.ok) {
+       const channels = Array.isArray(result.channels) ? result.channels : []
+       setSlackChannels(channels) // #slack 추가 (Slack 채널 목록 저장)
+       const selected = result.selected || {}
+       if (selected.channel_id) {
+         setSelectedSlackChannel(String(selected.channel_id)) // #slack 추가 (선택된 Slack 채널 저장)
+         setSelectedSlackWorkspaceId(String(selected.workspace_id || '')) // #slack 추가 (선택된 Slack 워크스페이스 저장)
+       }
+     }
+   }
+ }
+
+ 4) handleConnect / 에러 처리
+ 수정 전:
+ if (channel === 'discord') {
+   const result = await connectNotification(channel)
+   if (!result || !result.ok) setError('Discord 연결 실패')
+ }
+
+ 수정 후 (Slack 포함, 메시지 디테일 처리):
+ if (channel === 'discord' || channel === 'slack') {
+   const result = await connectNotification(channel)
+   if (!result || !result.ok) {
+     const detail = result?.error ? `: ${result.error}` : ''
+     setError((result?.message || `${channel === 'slack' ? 'Slack' : 'Discord'} 연결 실패`) + detail)
+   }
+ }
+
+ 5) handleTest — 채널 선택 검증 및 재연결 유도
+ 수정 전 (Discord만 검증):
+ if (channel === 'discord' && selectedDiscordChannels.length === 0) {
+   setError('채널을 먼저 선택해주세요.')
+   return
+ }
+
+ 수정 후 (Slack 검증 추가 및 재연결 유도):
+ if (channel === 'discord' && selectedDiscordChannels.length === 0) {
+   setError('채널을 먼저 선택해주세요.')
+   return
+ }
+ if (channel === 'slack' && !selectedSlackChannel) { // #slack 추가 (Slack 채널을 먼저 선택해야 테스트 가능)
+   setError('Slack 채널을 먼저 선택해주세요.')
+   return
+ }
+
+ // 테스트 실패 시 메시지에 따라 재연결 유도
+ if (channel === 'slack' && (message.includes('채널') || message.includes('선택'))) { // #slack 추가
+   const reconnect = await connectNotification('slack')
+   if (reconnect?.ok || reconnect?.connected) {
+     result = await testNotification(channel)
+     if (result?.ok) return
+   }
+ }
+
+ 6) handleSlackChannelChange (Slack 채널 저장)
+ async function handleSlackChannelChange(id) {
+   const channelId = String(id)
+   setError('')
+
+   const selected = slackChannels.find((item) => String(item.channel_id) === channelId)
+   if (!selected) return
+
+   setSelectedSlackChannel(channelId) // #slack 추가 (Slack은 단일 채널만 저장)
+   setSelectedSlackWorkspaceId(String(selected.workspace_id || '')) // #slack 추가 (워크스페이스 정보 저장)
+
+   setSavingChannel(true)
+   try {
+     const saveResult = await selectSlackChannel({
+       workspaceId: String(selected.workspace_id || ''),
+       channelId,
+     })
+     if (!saveResult?.ok) {
+       setError(saveResult?.message || 'Slack 채널 선택 저장 실패')
+     }
+   } finally {
+     setSavingChannel(false)
+   }
+ }
+
+ 7) UI: Slack 채널 목록 렌더링 (연결된 경우)
+ {id === 'slack' && ch.connected && (
+   <div className="mt-2 flex flex-wrap gap-1.5">
+     {slackChannels.length === 0 ? (
+       <p className="text-xs text-gray-500">Slack 채널을 불러오는 중이거나 채널이 없습니다.</p>
+     ) : (
+       slackChannels.map((item) => {
+         const itemValue = String(item.channel_id)
+         const channelLabel = `#${item.channel_name}`
+         const active = selectedSlackChannel === itemValue
+         return (
+           <button
+             key={itemValue}
+             onClick={() => handleSlackChannelChange(itemValue)}
+             disabled={loading || savingChannel}
+             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${active ? styles.filterBtnActive : styles.filterBtnInactive} ${loading || savingChannel ? 'opacity-50 cursor-not-allowed' : ''}`}>
+             {channelLabel}
+             {active && <Check size={11} className="ml-1.5 inline-block" />}
+           </button>
+         )
+       })
+     )}
+   </div>
+ )}
+
+ 8) 버튼 disabled 조건 (테스트 버튼 등)
+ disabled={(channelAction.id === id && channelAction.type === 'test') || (id === 'discord' && selectedDiscordChannels.length === 0) || (id === 'slack' && !selectedSlackChannel)} // #slack 추가
+
+ 9) 설정 요약 문자열(슬랙 확장)
+ agent.notifications?.slack?.connected && `Slack (${selectedSlackWorkspaceId ? `${selectedSlackWorkspaceId} / ` : ''}${selectedSlackChannel ? `#${selectedSlackChannel}` : '연결됨'})` // #slack 추가 (선택된 Slack 워크스페이스/채널 표시)
+
+ 삭제(또는 정리)된 항목
+ - 원본의 긴/중복된 `loadChannels` 관련 블록과 불필요 주석 일부는 복사본에서 정리했습니다. 실제 기능 대체는 위의 간단화된 흐름으로 적용됩니다.
+
+ 목적 및 방침
+ - 이 파일은 코드 리뷰·비교용 복사본입니다. 주요 변경점(위)을 명확히 남기기 위해 생성했으며, 검토 완료 후 원본 교체 또는 원본 삭제(보관) 예정입니다.
+ - 복사본 내부에서 '기능적으로 동일한 불필요한 코드'는 정리했으나, 실제 동작 검증은 변경 후 E2E(예: Slack OAuth)를 통해 확인해야 합니다.
+*/
 import { useEffect, useMemo, useRef, useState } from 'react' // #추가
 import { useNavigate } from 'react-router-dom'
 import { useAgentStore } from '../../store/agentStore'
@@ -38,8 +227,8 @@ export default function AgentStepper() {
     disconnectNotification,
     testNotification,
     saveAgent,
-    getDiscordChannels, // #기존 디스코드
-    selectDiscordChannel, // #기존 디스코드 
+    getDiscordChannels, // #추가
+    selectDiscordChannel, // #추가
     getSlackChannels, // #slack 추가 (Slack 채널 목록 로드) 5/22
     selectSlackChannel, // #slack 추가 (Slack 채널 저장) 5/22
   } = useAgentStore()
