@@ -7,28 +7,14 @@ export function isLoggedIn() {
 export function clearAuth() {
   localStorage.removeItem('ppa_logged_in')
   localStorage.removeItem('ppa_token')
+  localStorage.removeItem('token')
+  localStorage.removeItem('user_email')
 }
 
-/**
- * fetch 래퍼 — 401 응답 시 자동으로 로그아웃 후 로그인 페이지로 이동
- * 백엔드 API 호출 시 fetch 대신 이걸 사용
- */
-export async function authFetch(url, options = {}) {
-  const token = localStorage.getItem('ppa_token')
-
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+/** Frontend-only mock response. Replace with a fetch wrapper during backend integration. */
+export async function authFetch() {
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
   })
-
-  if (res.status === 401) {
-    clearAuth()
-    window.location.href = '/login'
-    return null
-  }
-
-  return res
 }

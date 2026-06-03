@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
+    "build": "npm run check:frontend-boundaries && vite build",
+    "lint": "eslint . && npm run check:frontend-boundaries",
+    "check:frontend-boundaries": "node scripts/check-frontend-boundaries.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

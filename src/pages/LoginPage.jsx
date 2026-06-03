@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import styles from './LoginPage.module.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://paper-agent-altv.onrender.com'
-
 export default function LoginPage() {
   const [view, setView]       = useState('login')   // 'login' | 'verify'
   const [email, setEmail]     = useState('')
@@ -13,7 +11,9 @@ export default function LoginPage() {
 
   // ── 구글 로그인
   function handleGoogleLogin() {
-    window.location.href = `${API_BASE}/auth/google`
+    localStorage.setItem('ppa_logged_in', 'true')
+    localStorage.setItem('user_email', 'frontend@ppa.dev')
+    window.location.href = '/dashboard'
   }
 
   // ── 이메일로 인증코드 발송
@@ -23,17 +23,7 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      const data = await res.json()
-      if (res.ok && data.ok) {
-        setView('verify')
-      } else {
-        setError({ type: 'send_fail', msg: data.message || '이메일 발송에 실패했습니다 잠시 후 다시 시도해주세요' })
-      }
+      setView('verify')
     } catch {
       setError({ type: 'send_fail', msg: '이메일 발송에 실패했습니다 잠시 후 다시 시도해주세요' })
     } finally {
@@ -48,21 +38,12 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/email/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
-      })
-      const data = await res.json()
-      if (res.ok && data.ok) {
+      if (code.trim().length === 6) {
         localStorage.setItem('ppa_logged_in', 'true')
-        if (data.token) localStorage.setItem('ppa_token', data.token)
+        localStorage.setItem('user_email', email.trim())
         window.location.href = '/dashboard'
-      } else if (data.error === 'expired') {
-        setError({ type: 'expired', msg: '인증 코드가 만료되었습니다 다시 요청해주세요' })
       } else {
-        const left = data.attempts_left ?? null
-        setError({ type: 'wrong', msg: `잘못된 인증 코드입니다${left !== null ? ` (${left}회 남음)` : ''}` })
+        setError({ type: 'wrong', msg: '인증 코드 6자리를 입력해주세요' })
       }
     } catch {
       setError({ type: 'send_fail', msg: '오류가 발생했습니다 잠시 후 다시 시도해주세요' })
@@ -77,15 +58,7 @@ export default function LoginPage() {
     setCode('')
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.ok) {
-        setError({ type: 'send_fail', msg: '이메일 발송에 실패했습니다 잠시 후 다시 시도해주세요' })
-      }
+      setView('verify')
     } catch {
       setError({ type: 'send_fail', msg: '이메일 발송에 실패했습니다 잠시 후 다시 시도해주세요' })
     } finally {

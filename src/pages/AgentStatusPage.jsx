@@ -12,7 +12,17 @@ const SOURCE_LABELS = {
   core:     'CORE',
 }
 
-const LAST_COLLECTED = '2024.06.10 오전 09:00'
+function formatLastCollected(timestamp) {
+  if (!timestamp) return '수집 기록 없음'
+  const date = new Date(timestamp * 1000)
+  return date.toLocaleString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
 
 const STATUS_CFG = {
   unset:  { label: '미설정',   text: 'var(--status-neutral)', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)' },

@@ -98,9 +98,8 @@ export default function AgentStepper() {
         }
       }
     }
-
     loadChannels()
-  }, [step, agent.notifications?.discord?.connected, agent.notifications?.slack?.connected]) // #추가
+  }, [step, agent.notifications?.discord?.connected, agent.notifications?.slack?.connected, getDiscordChannels, getSlackChannels]) // #추가
 
   // summaryLengthLabel 정의
   const summaryLengthLabel = useMemo(() => {
@@ -182,12 +181,11 @@ export default function AgentStepper() {
     setChannelAction({ type: 'connect', id: channel }) // #추가
     setError('')
     try {
-      if (channel === 'discord' || channel === 'slack') {
-        const result = await connectNotification(channel)
-        if (!result || !result.ok) {
-          const detail = result?.error ? `: ${result.error}` : '' // #추가
-          setError((result?.message || `${channel === 'slack' ? 'Slack' : 'Discord'} 연결 실패`) + detail)
-        }
+      const result = await connectNotification(channel)
+      if (!result || !result.ok) {
+        const detail = result?.error ? `: ${result.error}` : '' // #추가
+        const label = channel === 'slack' ? 'Slack' : channel === 'discord' ? 'Discord' : channel
+        setError((result?.message || `${label} 연결 실패`) + detail)
       }
     } catch (err) {
       setError('오류 발생: ' + err.message)
@@ -911,4 +909,3 @@ function OptionGroup({ title, items, value, onSelect }) {
     </div>
   )
 }
-

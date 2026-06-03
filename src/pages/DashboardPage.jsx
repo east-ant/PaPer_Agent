@@ -18,12 +18,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartTooltip)
 
-const TREND_SETS = {
-  '주별': { data: mockStats.trend, labels: mockStats.trendLabels },
-  '월별': { data: [45, 88, 120, 95, 140, 185, 210, 178, 240, 290, 265, 340], labels: ['7월','8월','9월','10월','11월','12월','1월','2월','3월','4월','5월','6월'] },
-  '년별': { data: [120, 340, 890, 1248], labels: ['2021','2022','2023','2024'] },
-}
-
 export default function DashboardPage() {
   const [params] = useSearchParams()
   const tab = params.get('tab') || 'total'
@@ -187,7 +181,7 @@ function TotalPage({ agent }) {
             ))}
           </div>
         </div>
-        <TrendChart period={trendPeriod} />
+        <TrendChart key={trendPeriod} period={trendPeriod} />
       </section>
 
       {/* Latest papers */}
@@ -391,7 +385,6 @@ function TrendChart({ period }) {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
     const p = period === '주별' ? 'weekly' : period === '월별' ? 'monthly' : 'yearly'
     fetchTrend(p).then(res => {
       if (cancelled) return

@@ -50,47 +50,42 @@ export const useAgentStore = create(
         })),
 
       connectNotification: async (channel) => {
+        let result
         if (channel === 'discord') {
-          const result = await agentAPI.connectDiscord()
-          if (result.connected) {
-            set((state) => ({
-              agent: {
-                ...state.agent,
-                notifications: {
-                  ...state.agent.notifications,
-                  discord: {
-                    connected: true,
-                    lastTestStatus: result.lastTestStatus || null,
-                    lastTestAt: result.lastTestAt || null,
-                  },
-                },
-              },
-            }))
-          }
-          return result
+          result = await agentAPI.connectDiscord()
+        } else if (channel === 'slack') {
+          result = await agentAPI.connectSlack()
+        } else {
+          result = await agentAPI.connectChannel(channel)
         }
 
-        if (channel === 'slack') {
-          const result = await agentAPI.connectSlack()
-          if (result.connected) {
-            set((state) => ({
+        if (result?.ok || result?.connected) {
+          set((state) => {
+            const updatedNotifications = {
+              ...state.agent.notifications,
+              [channel]: {
+                connected: true,
+                lastTestStatus: result.lastTestStatus || null,
+                lastTestAt: result.lastTestAt || null,
+              },
+            }
+            const hasNotification =
+              updatedNotifications.discord?.connected ||
+              updatedNotifications.slack?.connected ||
+              updatedNotifications.email?.connected
+            return {
               agent: {
                 ...state.agent,
-                notifications: {
-                  ...state.agent.notifications,
-                  slack: {
-                    connected: true,
-                    lastTestStatus: result.lastTestStatus || null,
-                    lastTestAt: result.lastTestAt || null,
-                  },
-                },
+                notifications: updatedNotifications,
+                // 알림 채널 연결 시 에이전트가 설정된 상태면 자동으로 활성화
+                isActive: state.agent.isConfigured && hasNotification
+                  ? true
+                  : state.agent.isActive,
               },
-            }))
-          }
-          return result
+            }
+          })
         }
-
-        return { ok: false, message: `알 수 없는 채널입니다: ${channel}` }
+        return result
       },
 
       getDiscordChannels: async () => {
@@ -110,22 +105,30 @@ export const useAgentStore = create(
       },
 
       disconnectNotification: async (channel) => {
-        // Phase 5: 에이전트 삭제로 연결 해제
-        const result = await agentAPI.deleteAgent()
-        if (result.ok) {
-          set((state) => ({
-            agent: {
-              ...state.agent,
-              notifications: {
-                ...state.agent.notifications,
-                [channel]: {
-                  connected: false,
-                  lastTestStatus: null,
-                  lastTestAt: null,
-                },
+        const result = await agentAPI.disconnectChannel(channel)
+        if (result?.ok) {
+          set((state) => {
+            const updatedNotifications = {
+              ...state.agent.notifications,
+              [channel]: {
+                connected: false,
+                lastTestStatus: null,
+                lastTestAt: null,
               },
-            },
-          }))
+            }
+            const hasNotification =
+              updatedNotifications.discord?.connected ||
+              updatedNotifications.slack?.connected ||
+              updatedNotifications.email?.connected
+            return {
+              agent: {
+                ...state.agent,
+                notifications: updatedNotifications,
+                // 마지막 알림 채널 해제 시 자동 일시정지
+                isActive: hasNotification ? state.agent.isActive : false,
+              },
+            }
+          })
         }
         return result
       },
@@ -134,10 +137,10 @@ export const useAgentStore = create(
         let result
         if (channel === 'discord') {
           result = await agentAPI.testDiscord()
-        }
-        // 5/22일 #slack 추가 (Slack 테스트 발송)
-        if (channel === 'slack') {
+        } else if (channel === 'slack') {
           result = await agentAPI.testSlack() 
+        } else {
+          result = await agentAPI.testChannel(channel)
         }
         if (result && result.ok) {
           set((state) => ({
@@ -161,7 +164,7 @@ export const useAgentStore = create(
                 ...state.agent.notifications,
                 [channel]: {
                   ...state.agent.notifications[channel],
-                  lastTestStatus: 'failed',
+                  lastTestStatus: 'fail',
                   lastTestAt: Date.now(),
                 },
               },
@@ -201,6 +204,7 @@ export const useAgentStore = create(
               notifications: {
                 discord: result.notifications?.discord || initialAgent.notifications.discord,
                 slack: result.notifications?.slack || initialAgent.notifications.slack,
+                email: result.notifications?.email || initialAgent.notifications.email,
               },
             },
           })

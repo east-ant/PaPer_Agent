@@ -191,6 +191,7 @@ export async function testDiscord() {
 
 export async function disconnectChannel(channel) {
   return mockDisconnectChannel(channel)
+}
 
 /**
  * Phase 6: Slack 테스트 알림 전송 5/22
