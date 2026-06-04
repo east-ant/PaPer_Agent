@@ -1,0 +1,60 @@
+.card {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+
+.avatar {
+  background: var(--accent);
+}
+
+.name {
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.email {
+  color: var(--text-muted);
+}
+
+.sectionHeader {
+  color: var(--text-primary);
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.rowDivider {
+  border-top: var(--border-width) solid var(--border);
+}
+
+.rowIcon {
+  color: var(--text-muted);
+}
+
+.rowLabel {
+  color: var(--text-secondary);
+}
+
+.rowValue {
+  color: var(--text-primary);
+}
+
+.providerTitle {
+  color: var(--text-primary);
+}
+
+.providerEmail {
+  color: var(--text-muted);
+}
+
+.connectedBadge {
+  background: var(--status-active-bg);
+  color: var(--status-active);
+}
+
+.logoutBtn {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+  color: var(--status-error);
+}
+.logoutBtn:hover {
+  background: rgba(239, 68, 68, 0.04);
+}

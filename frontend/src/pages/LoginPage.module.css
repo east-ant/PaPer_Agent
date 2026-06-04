@@ -1,0 +1,102 @@
+.brandPanel {
+  background: linear-gradient(135deg, #111111 0%, #1c1c1e 60%, #2a1a1f 100%);
+}
+
+.glow {
+  background: var(--accent);
+}
+
+.loginPanel {
+  background: var(--bg-card);
+}
+
+.heading {
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtext {
+  color: var(--text-secondary);
+}
+
+/* 구글 버튼 */
+.googleBtn {
+  border-color: var(--border);
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+.googleBtn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* 구분선 */
+.divider {
+  width: 100%;
+}
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  display: block;
+}
+.dividerText {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* 이메일 입력 */
+.emailInput {
+  border-color: var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.emailInput:focus {
+  border-color: var(--accent);
+}
+.emailInputError {
+  border-color: var(--status-error) !important;
+}
+
+/* 로그인/확인 버튼 */
+.submitBtn {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+}
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.submitBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 뒤로가기 버튼 */
+.backBtn {
+  color: var(--text-secondary);
+}
+.backBtn:hover {
+  color: var(--text-primary);
+}
+
+/* 이메일 강조 */
+.emailHighlight {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* 에러 메시지 */
+.errorMsg {
+  color: var(--status-error);
+}
+.errorWarn {
+  color: var(--status-warning);
+}
+
+/* 하단 링크 버튼 */
+.linkBtn {
+  color: var(--text-muted);
+}
+.linkBtn:hover {
+  color: var(--text-primary);
+}

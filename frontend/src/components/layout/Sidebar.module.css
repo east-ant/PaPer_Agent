@@ -1,0 +1,64 @@
+.sidebar {
+  background: var(--bg-card);
+  border-right: var(--border-width) solid var(--border);
+}
+
+.header {
+  height: var(--topbar-height);
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.logo {
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.toggleBtn {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.toggleBtn:hover {
+  color: var(--text-primary);
+}
+
+.navLink {
+  color: var(--text-secondary);
+  font-weight: 400;
+  text-decoration: none;
+  position: relative;
+}
+.navLink:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+.navLinkActive {
+  background: #f4f4f5;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.navLinkActive::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--text-primary);
+}
+
+.footer {
+  border-top: var(--border-width) solid var(--border);
+}
+
+.logoutBtn {
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.logoutBtn:hover {
+  color: var(--status-error);
+}

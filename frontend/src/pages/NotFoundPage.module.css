@@ -1,0 +1,22 @@
+.bg {
+  background: var(--bg-primary);
+}
+
+.code {
+  color: var(--text-primary);
+  opacity: 0.12;
+}
+
+.title {
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.desc {
+  color: var(--text-secondary);
+}
+
+.btn {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+}

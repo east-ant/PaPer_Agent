@@ -1,0 +1,302 @@
+/* ── Wrapper ── */
+.stepper {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+
+/* ── Header ── */
+.stepperHeader {
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.stepCurrent {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+  border: none;
+}
+.stepDone {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: none;
+}
+.stepPending {
+  color: var(--text-muted);
+  border: var(--border-width) solid var(--border);
+}
+
+.stepCounter {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+}
+
+/* ── Step labels ── */
+.stepLabel {
+  color: var(--text-muted);
+}
+.stepTitle {
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.stepMeta {
+  color: var(--text-secondary);
+}
+.stepMetaBold {
+  color: var(--text-primary);
+}
+.stepHint {
+  color: var(--text-muted);
+}
+
+/* ── Keyword input ── */
+.keywordInput {
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+.keywordInput:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.keywordTag {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+}
+.keywordTagRemove {
+  opacity: 0.5;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.keywordTagRemove:hover {
+  opacity: 1;
+}
+.keywordEmpty {
+  color: var(--text-muted);
+}
+
+/* ── Suggested keywords ── */
+.suggestBtn {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.suggestBtnUsed {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: var(--border-width) solid var(--border);
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Filter buttons (전체/국내/해외, 언어 등) ── */
+.filterBtnActive {
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+  border: none;
+}
+.filterBtnInactive {
+  background: transparent;
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}
+
+/* ── Source cards ── */
+.sourceCardActive {
+  background: var(--bg-dark);
+  border: none;
+}
+.sourceCardInactive {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+.sourceCardInactive:hover {
+  background: var(--bg-secondary);
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.sourceNameActive {
+  color: var(--text-on-dark);
+}
+.sourceNameInactive {
+  color: var(--text-primary);
+}
+.sourceHelpIcon {
+  color: var(--text-muted);
+  opacity: 0.7;
+  cursor: default;
+  transition: opacity 0.15s ease;
+}
+.sourceHelpIcon:hover {
+  opacity: 1;
+}
+.sourceRegionTag {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+.sourceRegionTagActive {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+.tooltipText {
+  color: var(--text-secondary);
+}
+
+/* ── Step 3 preview ── */
+.previewBox {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.previewBoxLabel {
+  color: var(--text-secondary);
+}
+.previewTitle {
+  color: var(--text-primary);
+}
+.previewMeta {
+  color: var(--text-secondary);
+}
+.previewSummary {
+  color: var(--text-secondary);
+}
+.previewFooter {
+  color: var(--text-muted);
+}
+.previewAccent {
+  color: var(--accent);
+}
+
+/* ── Step 4 notification ── */
+.guideBox {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.guideLabel {
+  color: var(--text-secondary);
+}
+.guideStep {
+  color: var(--text-secondary);
+}
+.guideStepNum {
+  background: var(--bg-dark);
+}
+.guideMock {
+  color: var(--text-muted);
+}
+
+.channelCardDefault {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--border);
+}
+.channelCardConnected {
+  background: rgba(34, 197, 94, 0.04);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+.channelName {
+  color: var(--text-primary);
+}
+.channelDesc {
+  color: var(--text-secondary);
+}
+.channelTestOk {
+  color: var(--status-active);
+}
+.channelTestFail {
+  color: var(--status-error);
+}
+
+.connectBtnConnected {
+  background: var(--status-active);
+  color: #fff;
+  border: none;
+}
+.connectBtnDefault {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.testBtn {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.testBtn:hover {
+  color: var(--text-primary);
+}
+.disconnectBtn {
+  color: var(--status-error);
+  opacity: 0.6;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.disconnectBtn:hover {
+  opacity: 1;
+}
+
+/* ── Step 5 summary ── */
+.summaryTable {
+  border: var(--border-width) solid var(--border);
+}
+.summaryRow {
+  border-top: var(--border-width) solid var(--border);
+}
+.summaryLabel {
+  color: var(--text-secondary);
+}
+.summaryValue {
+  color: var(--text-primary);
+}
+.summaryEditBtn {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.summaryEditBtn:hover {
+  color: var(--accent);
+}
+.warningText {
+  color: var(--status-warning);
+}
+
+/* ── Footer ── */
+.stepperFooter {
+  border-top: var(--border-width) solid var(--border);
+}
+.btnBack {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.btnBack:hover {
+  border-color: var(--text-primary);
+}
+.btnCancel {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: var(--border-width) solid var(--border);
+}
+.btnCancel:hover {
+  border-color: var(--text-primary);
+}
+.btnNext {
+  background: var(--bg-dark);
+}
+.btnSave {
+  background: var(--accent);
+}
+
+/* ── Error / Warning ── */
+.errorText {
+  color: var(--status-error);
+}

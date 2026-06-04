@@ -1,0 +1,12 @@
+.wrap {
+  background: var(--bg-dark);
+}
+
+.message {
+  color: var(--text-on-dark);
+  letter-spacing: -0.01em;
+}
+
+.sub {
+  color: rgba(255, 255, 255, 0.3);
+}

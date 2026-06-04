@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slack PKCE Local Test</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08111f;
+      --panel: rgba(14, 22, 39, 0.92);
+      --panel-2: rgba(23, 34, 58, 0.88);
+      --text: #eaf2ff;
+      --muted: #9fb0cc;
+      --line: rgba(160, 184, 230, 0.18);
+      --accent: #5eead4;
+      --accent-2: #60a5fa;
+      --danger: #fb7185;
+      --code: #d9f99d;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(96, 165, 250, 0.26), transparent 30%),
+        radial-gradient(circle at top right, rgba(94, 234, 212, 0.16), transparent 25%),
+        linear-gradient(180deg, #040814 0%, #091120 50%, #060a13 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 20px;
+      align-items: stretch;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel), rgba(8, 14, 26, 0.92));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card .inner {
+      padding: 22px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(96, 165, 250, 0.12);
+      border: 1px solid rgba(96, 165, 250, 0.24);
+      color: #cfe3ff;
+      font-size: 0.92rem;
+    }
+
+    .pill.ok {
+      background: rgba(94, 234, 212, 0.12);
+      border-color: rgba(94, 234, 212, 0.22);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 0.92rem;
+      color: #d9e4f7;
+    }
+
+    input, textarea {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(160, 184, 230, 0.18);
+      background: rgba(7, 12, 21, 0.88);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.94rem;
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(94, 234, 212, 0.65);
+      box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.12);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      color: #06111f;
+      background: linear-gradient(135deg, var(--accent), #c4f1ff);
+      cursor: pointer;
+      transition: transform 0.16s ease, filter 0.16s ease;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: rgba(96, 165, 250, 0.14);
+      border: 1px solid rgba(96, 165, 250, 0.2);
+    }
+
+    button.danger {
+      color: #fff;
+      background: linear-gradient(135deg, #fb7185, #ef4444);
+    }
+
+    button:hover { transform: translateY(-1px); filter: brightness(1.03); }
+    button:active { transform: translateY(0); }
+
+    .output {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(4, 8, 16, 0.88);
+      border: 1px solid rgba(160, 184, 230, 0.16);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 72px;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      color: #d6f7ff;
+    }
+
+    .code {
+      color: var(--code);
+    }
+
+    .note {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(96, 165, 250, 0.08);
+      border: 1px solid rgba(96, 165, 250, 0.16);
+      color: #d4e5ff;
+    }
+
+    .warn {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(251, 113, 133, 0.09);
+      border: 1px solid rgba(251, 113, 133, 0.18);
+      color: #ffd1da;
+    }
+
+    .small {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 960px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <div class="card">
+        <div class="inner">
+          <div class="pill-row">
+            <span class="pill ok">Local PKCE test page</span>
+            <span class="pill">No existing files changed</span>
+            <span class="pill">Served from /public</span>
+          </div>
+          <h1>Slack OAuth PKCE 테스트</h1>
+          <p>
+            이 페이지는 로컬 localhost redirect와 PKCE challenge/verifier를 브라우저에서 바로 확인하기 위한 임시 테스트용입니다.
+            기존 앱 코드는 건드리지 않았습니다.
+          </p>
+          <div class="footer" id="locationInfo"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="inner stack">
+          <div class="note">
+            <strong>사용법</strong>
+            <div class="small" style="margin-top:8px; line-height:1.6;">
+              1. 아래에서 client id와 redirect uri를 맞춤.<br />
+              2. PKCE 생성 버튼 클릭.<br />
+              3. OAuth URL 열기 버튼으로 Slack 인증을 띄움.<br />
+              4. 콜백이 돌아오면 code/state를 이 페이지에서 확인.
+            </div>
+          </div>
+          <div class="warn">
+            <strong>주의</strong>
+            <div class="small" style="margin-top:8px; line-height:1.6;">
+              이 파일은 토큰 교환까지 자동으로 처리하지 않습니다.
+              redirect 동작과 PKCE 생성만 검증하는 임시 페이지입니다.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="inner stack">
+          <h2 style="margin:0; font-size:1.3rem;">OAuth 설정</h2>
+          <label>
+            Slack Client ID
+            <input id="clientId" placeholder="11165078440565.11162113751123" />
+          </label>
+          <label>
+            Redirect URI
+            <input id="redirectUri" />
+          </label>
+          <label>
+            Scope
+            <input id="scope" value="channels:read,chat:write,commands,channels:manage,users:read" />
+          </label>
+          <label>
+            State
+            <input id="state" placeholder="test-user-or-random-string" />
+          </label>
+          <div class="row">
+            <button id="generateBtn">PKCE 생성</button>
+            <button class="secondary" id="openBtn">OAuth URL 열기</button>
+            <button class="secondary" id="copyBtn">URL 복사</button>
+            <button class="danger" id="clearBtn">초기화</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="inner stack">
+          <h2 style="margin:0; font-size:1.3rem;">생성 결과</h2>
+          <label>
+            code_verifier
+            <textarea id="verifier" readonly></textarea>
+          </label>
+          <label>
+            code_challenge
+            <textarea id="challenge" readonly></textarea>
+          </label>
+          <label>
+            OAuth URL
+            <textarea id="oauthUrl" readonly></textarea>
+          </label>
+          <div class="output" id="callbackResult">콜백 결과가 여기에 표시됩니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_CLIENT_ID = '11165078440565.11162113751123';
+    const DEFAULT_REDIRECT_URI = 'http://localhost:5173/test/slack-pkce/index.html';
+    const AUTH_URL = 'https://slack.com/oauth/v2/authorize';
+    const VERIFIER_KEY = 'slack-pkce-verifier';
+    const CHALLENGE_METHOD = 'S256';
+
+    const els = {
+      clientId: document.getElementById('clientId'),
+      redirectUri: document.getElementById('redirectUri'),
+      scope: document.getElementById('scope'),
+      state: document.getElementById('state'),
+      verifier: document.getElementById('verifier'),
+      challenge: document.getElementById('challenge'),
+      oauthUrl: document.getElementById('oauthUrl'),
+      callbackResult: document.getElementById('callbackResult'),
+      locationInfo: document.getElementById('locationInfo'),
+      generateBtn: document.getElementById('generateBtn'),
+      openBtn: document.getElementById('openBtn'),
+      copyBtn: document.getElementById('copyBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+    };
+
+    function toBase64Url(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function randomVerifier(length = 64) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+      const bytes = crypto.getRandomValues(new Uint8Array(length));
+      let verifier = '';
+      for (const byte of bytes) verifier += chars[byte % chars.length];
+      return verifier;
+    }
+
+    async function sha256(text) {
+      const encoded = new TextEncoder().encode(text);
+      const digest = await crypto.subtle.digest('SHA-256', encoded);
+      return toBase64Url(digest);
+    }
+
+    async function ensurePkce() {
+      let verifier = sessionStorage.getItem(VERIFIER_KEY);
+      if (!verifier) {
+        verifier = randomVerifier();
+        sessionStorage.setItem(VERIFIER_KEY, verifier);
+      }
+      const challenge = await sha256(verifier);
+      els.verifier.value = verifier;
+      els.challenge.value = challenge;
+      return { verifier, challenge };
+    }
+
+    function buildOauthUrl(challenge) {
+      const clientId = els.clientId.value.trim();
+      const redirectUri = els.redirectUri.value.trim();
+      const scope = els.scope.value.trim();
+      const state = els.state.value.trim() || 'slack-pkce-test';
+      const params = new URLSearchParams({
+        client_id: clientId,
+        scope,
+        redirect_uri: redirectUri,
+        state,
+        code_challenge: challenge,
+        code_challenge_method: CHALLENGE_METHOD,
+      });
+      return `${AUTH_URL}?${params.toString()}`;
+    }
+
+    async function refreshUrl() {
+      const { challenge } = await ensurePkce();
+      const url = buildOauthUrl(challenge);
+      els.oauthUrl.value = url;
+      return url;
+    }
+
+    function setDefaults() {
+      els.clientId.value = DEFAULT_CLIENT_ID;
+      els.redirectUri.value = window.location.origin && window.location.origin !== 'null'
+        ? `${window.location.origin}${window.location.pathname}`
+        : DEFAULT_REDIRECT_URI;
+      els.state.value = `test-${Date.now()}`;
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const error = params.get('error');
+      const desc = params.get('error_description');
+      if (code) {
+        els.callbackResult.innerHTML = `콜백 수신 성공\n\ncode: ${code}\nstate: ${params.get('state') || ''}\nstored verifier: ${sessionStorage.getItem(VERIFIER_KEY) || '(없음)'}`;
+      } else if (error) {
+        els.callbackResult.innerHTML = `콜백 에러\n\nerror: ${error}\n${desc ? `description: ${desc}` : ''}`;
+      } else {
+        els.callbackResult.textContent = '아직 callback 파라미터가 없습니다. PKCE를 생성하고 Slack 인증을 열어보세요.';
+      }
+      els.locationInfo.textContent = `현재 경로: ${window.location.href}`;
+    }
+
+    els.generateBtn.addEventListener('click', async () => {
+      const url = await refreshUrl();
+      els.callbackResult.textContent = 'PKCE verifier/challenge를 생성했습니다.';
+      return url;
+    });
+
+    els.openBtn.addEventListener('click', async () => {
+      const url = await refreshUrl();
+      window.open(url, '_blank', 'width=560,height=760');
+      els.callbackResult.textContent = 'Slack OAuth 창을 열었습니다. 팝업 차단이면 브라우저 허용이 필요합니다.';
+    });
+
+    els.copyBtn.addEventListener('click', async () => {
+      const url = els.oauthUrl.value || await refreshUrl();
+      await navigator.clipboard.writeText(url);
+      els.callbackResult.textContent = 'OAuth URL을 클립보드에 복사했습니다.';
+    });
+
+    els.clearBtn.addEventListener('click', () => {
+      sessionStorage.removeItem(VERIFIER_KEY);
+      els.verifier.value = '';
+      els.challenge.value = '';
+      els.oauthUrl.value = '';
+      els.state.value = `test-${Date.now()}`;
+      els.callbackResult.textContent = '세션 verifier를 초기화했습니다.';
+    });
+
+    setDefaults();
+    refreshUrl();
+  </script>
+</body>
+</html>
