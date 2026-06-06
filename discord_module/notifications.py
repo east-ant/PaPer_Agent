@@ -312,8 +312,8 @@ class DiscordNotificationService:
         }
         
         if user_email and link:
-            # custom_id: "save:<index>" 형식
-            custom_id = f"save:{index}"
+            # custom_id: "save:<index>:<user_email>" 형식
+            custom_id = f"save:{index}:{user_email}"
             
             # Interaction Button (style 1 = Primary 파란 버튼)
             paper["_save_button"] = {

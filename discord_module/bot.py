@@ -27,9 +27,9 @@ class PaperBot(commands.Bot):
             if custom_id.startswith("save:"):
                 await interaction.response.defer(ephemeral=True)
                 
-                parts = custom_id.split(":", 1)
-                if len(parts) == 2:
-                    _, paper_idx_str = parts
+                parts = custom_id.split(":", 2)
+                if len(parts) >= 2:
+                    paper_idx_str = parts[1]
                     
                     try:
                         # 1) 디스코드 유저 ID로 이메일 조회

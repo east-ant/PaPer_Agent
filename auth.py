@@ -90,5 +90,37 @@ def google_callback(code: str):
 
 @router.get("/me")
 def get_me(token: str):
-    """JWT 검증 후 유저 정보 반환 — 프론트가 Authorization 헤더 대신 쿼리로 써도 됨"""
-    return decode_jwt(token)
+    """JWT 검증 후 유저 정보 반환 (구글 연동 여부 포함)"""
+    import pymysql
+    from database import get_connection
+    payload = decode_jwt(token)
+    email = payload.get("email", "")
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        # users 테이블에서 구글 로그인 여부 확인 (picture가 http로 시작하면 구글 계정)
+        cursor.execute("SELECT email, name, picture, created_at FROM users WHERE email = %s", (email,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            picture = row.get("picture") or ""
+            # 구글 로그인한 사용자는 picture URL이 있음 (https://lh3.googleusercontent.com/...)
+            google_linked = bool(picture and picture.startswith("http"))
+            return {
+                "email": row["email"],
+                "name": row["name"] or email.split("@")[0],
+                "picture": picture,
+                "google_linked": google_linked,
+                "created_at": str(row["created_at"]) if row["created_at"] else "",
+            }
+    except Exception as e:
+        print(f"[auth/me] DB 조회 실패: {e}")
+    # DB 조회 실패 시 JWT payload로 fallback
+    picture = payload.get("picture", "")
+    return {
+        "email": email,
+        "name": payload.get("name", ""),
+        "picture": picture,
+        "google_linked": bool(picture and picture.startswith("http")),
+        "created_at": "",
+    }

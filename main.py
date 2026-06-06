@@ -15,6 +15,7 @@ from auth import router as auth_router, decode_jwt
 from notice.router import router as notice_router
 from discord_module.router import router as discord_router, oauth_callback as discord_oauth_callback
 from storage_box.router import router as storage_box_router
+from email_module.router import router as email_router
 # Phase 4-5: 스케줄러 임포트
 from notice.scheduler import start_scheduler, stop_scheduler, load_active_jobs
 from discord_module.bot import run_bot_in_background
@@ -25,6 +26,7 @@ app.include_router(auth_router)
 app.include_router(notice_router)
 app.include_router(discord_router)
 app.include_router(storage_box_router)
+app.include_router(email_router)
 
 app.add_middleware(
     CORSMiddleware,

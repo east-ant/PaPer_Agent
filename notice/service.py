@@ -52,7 +52,7 @@ class NoticeService:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # agent_configs 저장
+            # agent_configs 저장 (UPSERT)
             keywords = json.dumps(config.get("keywords", []))
             sources = json.dumps(config.get("sources", []))
             
@@ -87,22 +87,40 @@ class NoticeService:
                 config.get("frequency", "daily")
             ))
             
+            # ON DUPLICATE KEY UPDATE 시 lastrowid=0이므로 SELECT로 ID 확인
             agent_config_id = cursor.lastrowid
+            if not agent_config_id:
+                cursor.execute("SELECT id FROM agent_configs WHERE user_email=%s", (user_email,))
+                row = cursor.fetchone()
+                agent_config_id = row[0] if row else None
             conn.commit()
             
-            # notification_settings 조회 (이미 있는 경우)
+            # notification_settings: 있으면 재사용, 없으면 생성 (중복 절대 방지)
             cursor.execute("""
-                SELECT id FROM notification_settings WHERE user_email=%s
-            """, (user_email,))
+                INSERT INTO notification_settings (user_email, is_active, user_id, notification_channel, channel_id, frequency)
+                VALUES (%s, TRUE, %s, 'discord', '', 'daily')
+                ON DUPLICATE KEY UPDATE
+                    is_active=TRUE,
+                    updated_at=CURRENT_TIMESTAMP
+            """, (user_email, user_email))
+            conn.commit()
+
+            # id 조회 (INSERT든 UPDATE든 정확한 id 가져오기)
+            cursor.execute("SELECT id FROM notification_settings WHERE user_email=%s LIMIT 1", (user_email,))
             notification_record = cursor.fetchone()
             notification_id = notification_record[0] if notification_record else None
-            
+
+
             conn.close()
-            
+
             # 스케줄러에 작업 추가/업데이트
+
             if notification_id:
-                from .scheduler import add_job
-                add_job(notification_id, user_email, config.get("frequency", "daily"))
+                try:
+                    from .scheduler import add_job
+                    add_job(notification_id, user_email, config.get("frequency", "daily"))
+                except Exception as sch_err:
+                    print(f"[NoticeService] scheduler add_job error (non-critical): {sch_err}")
             
             return {
                 "ok": True,
@@ -111,6 +129,8 @@ class NoticeService:
                 "message": "알림 설정 저장 및 스케줄 등록 완료"
             }
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
                 "ok": False,
                 "error": str(e),
@@ -132,7 +152,7 @@ class NoticeService:
             sent_keys = set()
             for pid, title in rows:
                 if pid: sent_keys.add(f"id:{pid}")
-                if title: sent_keys.add(f"title:{normalize_title(title)}")
+                if title and normalize_title: sent_keys.add(f"title:{normalize_title(title)}")
             return sent_keys
         except Exception as e:
             print(f"발송 기록 조회 실패: {e}")
@@ -141,18 +161,35 @@ class NoticeService:
     @staticmethod
     def record_sent_papers(user_email: str, papers: list):
         """
-        발송된 논문들을 기록하여 중복 방지
+        발송된 논문들을 기록하여 중복 방지 + papers 테이블에도 저장 (전역 통계용)
         """
         try:
             conn = get_connection()
             cursor = conn.cursor()
             for paper in papers:
-                pid = paper.get("id") or paper.get("paperId") or ""
+                pid = paper.get("id") or paper.get("paperId") or paper.get("arxiv_id") or ""
                 title = paper.get("title", "")
+                abstract = paper.get("abstract", "")
+                summary = paper.get("summary", "")
+                category = paper.get("category", "")
+                published = paper.get("published") or paper.get("year")
+                
+                # sent_papers 기록
                 cursor.execute("""
                     INSERT IGNORE INTO sent_papers (user_email, paper_id, title)
                     VALUES (%s, %s, %s)
                 """, (user_email, pid, title))
+                
+                # papers 테이블에도 저장 (전역 통계 및 대시보드용)
+                if pid and title:
+                    try:
+                        cursor.execute("""
+                            INSERT IGNORE INTO papers 
+                            (user_email, arxiv_id, title, abstract, summary, category, published)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (user_email, pid, title, abstract, summary, category, published))
+                    except Exception as ex:
+                        print(f"papers 테이블 저장 실패 (non-critical): {ex}")
             conn.commit()
             conn.close()
         except Exception as e:
@@ -217,6 +254,7 @@ class NoticeService:
                 print(f"[PaperAgentRunner] failed, falling back to legacy collection: {e}")
         
         try:
+            import time as _time
             papers = []
             
             # 각 키워드별로 논문 수집
@@ -224,6 +262,10 @@ class NoticeService:
                 keyword = keyword.strip()
                 if not keyword:
                     continue
+                
+                # 이미 충분히 수집했으면 다음 키워드 건너뜀
+                if len(papers) >= collect_count * 2:
+                    break
                 
                 # 중복 방지 필터링을 고려하여 평소보다 3배 더 많이 수집 시도
                 limit_per_source = max(15, (collect_count * 3))
@@ -236,6 +278,8 @@ class NoticeService:
                         source_results = []
                         if source_lower == "arxiv":
                             source_results = arxiv_search(keyword, limit_per_source)
+                            # arXiv rate limit 방지: 호출 후 3초 대기
+                            _time.sleep(3)
                         elif source_lower == "crossref":
                             source_results = crossref_search(keyword, limit_per_source)
                         elif source_lower in ["semantic", "semantic scholar"]:
@@ -632,6 +676,37 @@ class NoticeService:
                 "error": str(e),
                 "message": "삭제 실패"
             }
+            
+    @staticmethod
+    def connect_email_channel(user_email: str, email_address: str) -> dict:
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM notification_settings WHERE user_email=%s", (user_email,))
+            existing_setting = cursor.fetchone()
+            
+            if existing_setting:
+                cursor.execute("UPDATE notification_settings SET email_connected=TRUE, email_address=%s WHERE user_email=%s", (email_address, user_email))
+            else:
+                cursor.execute("INSERT INTO notification_settings (user_email, email_connected, email_address) VALUES (%s, TRUE, %s)", (user_email, email_address))
+            
+            conn.commit()
+            conn.close()
+            return {"ok": True, "message": "이메일 채널이 연결되었습니다."}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @staticmethod
+    def disconnect_email_channel(user_email: str) -> dict:
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE notification_settings SET email_connected=FALSE, email_address=NULL WHERE user_email=%s", (user_email,))
+            conn.commit()
+            conn.close()
+            return {"ok": True, "message": "이메일 채널 연결이 해제되었습니다."}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
     
     @staticmethod
     def pause_notification(user_email: str) -> dict:
@@ -725,7 +800,9 @@ class NoticeService:
                     n.discord_username,
                     n.discord_channel_id,
                     n.last_discord_test_status,
-                    n.last_discord_test_at
+                    n.last_discord_test_at,
+                    n.email_connected,
+                    n.email_address
                 FROM agent_configs a
                 LEFT JOIN notification_settings n ON a.user_email = n.user_email
                 WHERE a.user_email=%s
@@ -743,8 +820,8 @@ class NoticeService:
                     "collect_count": result.get("collect_count"),
                     "language": result.get("language"),
                     "summary_length": result.get("summary_length"),
-                    "keywords": json.loads(result.get("keywords", "[]")),
-                    "sources": json.loads(result.get("sources", "[]")),
+                    "keywords": json.loads(result.get("keywords") or "[]"),
+                    "sources": json.loads(result.get("sources") or "[]"),
                     "notifications": {
                         "discord": {
                             "connected": bool(result.get("discord_username")),
@@ -752,6 +829,10 @@ class NoticeService:
                             "channel_id": result.get("discord_channel_id"),
                             "lastTestStatus": result.get("last_discord_test_status"),
                             "lastTestAt": int(result.get("last_discord_test_at").timestamp()) if result.get("last_discord_test_at") else None,
+                        },
+                        "email": {
+                            "connected": bool(result.get("email_connected")),
+                            "email": result.get("email_address"),
                         }
                     },
                     "updated_at": int(result.get("updated_at").timestamp()) if result.get("updated_at") else None,
@@ -773,6 +854,10 @@ class NoticeService:
                             "channel_id": None,
                             "lastTestStatus": None,
                             "lastTestAt": None,
+                        },
+                        "email": {
+                            "connected": False,
+                            "email": None,
                         }
                     },
                     "message": "에이전트 설정 없음"
@@ -783,34 +868,34 @@ class NoticeService:
                 "error": str(e),
                 "message": "상태 조회 실패"
             }
+    @staticmethod
     def get_dashboard_stats(user_email: str) -> dict:
         """
-        대시보드 KPI 통계 조회
+        대시보드 KPI 통계 조회 (전역 통계 - user_email 무시)
         """
         try:
             conn = get_connection()
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
-            # 1. 총 수집 수
-            cursor.execute("SELECT COUNT(*) as total FROM papers WHERE user_email = %s", (user_email,))
+            # 1. 총 수집 수 (전역)
+            cursor.execute("SELECT COUNT(*) as total FROM papers")
             total = cursor.fetchone()["total"]
             
-            # 2. 이번 주 신규 (최근 7일)
+            # 2. 이번 주 신규 (최근 7일, 전역)
             cursor.execute("""
                 SELECT COUNT(*) as count 
                 FROM papers 
-                WHERE user_email = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            """, (user_email,))
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            """)
             weekly = cursor.fetchone()["count"]
             
-            # 3. 지난 주 수집량 (증가율 계산용)
+            # 3. 지난 주 수집량 (증가율 계산용, 전역)
             cursor.execute("""
                 SELECT COUNT(*) as count 
                 FROM papers 
-                WHERE user_email = %s 
-                AND created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)
                 AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
-            """, (user_email,))
+            """)
             last_weekly = cursor.fetchone()["count"]
             
             growth = "0%"
@@ -820,15 +905,15 @@ class NoticeService:
             elif weekly > 0:
                 growth = "+100%"
 
-            # 4. 인기 카테고리 TOP 3 (키워드 대신 카테고리 활용)
+            # 4. 인기 카테고리 TOP 3 (전역)
             cursor.execute("""
                 SELECT category as label, COUNT(*) as count
                 FROM papers
-                WHERE user_email = %s AND category IS NOT NULL AND category != ''
+                WHERE category IS NOT NULL AND category != ''
                 GROUP BY category
                 ORDER BY count DESC
                 LIMIT 3
-            """, (user_email,))
+            """)
             top_keywords = cursor.fetchall()
 
             conn.close()
@@ -844,44 +929,45 @@ class NoticeService:
                 }
             }
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {"ok": False, "error": str(e)}
 
     @staticmethod
     def get_trend_data(user_email: str, period: str = "weekly") -> dict:
         """
-        수집 트렌드 차트 데이터 조회
+        수집 트렌드 차트 데이터 조회 (전역 통계 - user_email 무시)
         """
         try:
             conn = get_connection()
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
             if period == "monthly":
-                # 최근 12개월
+                # 최근 12개월 (전역)
                 cursor.execute("""
                     SELECT DATE_FORMAT(created_at, '%Y-%m') as label, COUNT(*) as count
                     FROM papers
-                    WHERE user_email = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
                     GROUP BY label
                     ORDER BY label ASC
-                """, (user_email,))
+                """)
             elif period == "yearly":
-                # 연도별
+                # 연도별 (전역)
                 cursor.execute("""
                     SELECT DATE_FORMAT(created_at, '%Y') as label, COUNT(*) as count
                     FROM papers
-                    WHERE user_email = %s
                     GROUP BY label
                     ORDER BY label ASC
-                """, (user_email,))
+                """)
             else:
-                # 주별 (최근 12주)
+                # 주별 (최근 12주, 전역)
                 cursor.execute("""
                     SELECT DATE_FORMAT(created_at, '%x-%v') as label, COUNT(*) as count
                     FROM papers
-                    WHERE user_email = %s AND created_at >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
                     GROUP BY label
                     ORDER BY label ASC
-                """, (user_email,))
+                """)
             
             rows = cursor.fetchall()
             conn.close()

@@ -72,6 +72,8 @@ async def save_notification_setting(
             "agent_config_id": result.get("agent_config_id"),
             "notification_id": notification_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
@@ -135,12 +137,23 @@ async def run_immediate_collection(user_email, notification_id, keywords, source
                 else:
                     send_result = {"ok": False, "error": "발송 수단(Webhook 또는 Channel ID)이 없습니다."}
                 
+                # 이메일 발송 추가
+                email_connected = channel_info.get("email_connected")
+                email_address = channel_info.get("email_address")
+                if email_connected and email_address:
+                    from email_module.service import send_papers_email
+                    email_result = send_papers_email(email_address, papers, user_email=user_email)
+                    if not send_result.get("ok") and email_result.get("ok"):
+                        send_result = email_result # 이메일이라도 성공했으면 성공으로 간주
+                
                 if send_result.get("ok"):
                     send_status = "sent"
                     NoticeService.record_sent_papers(user_email, papers)
                 else:
                     send_status = "failed"
                     send_error = send_result.get("error")
+            else:
+                send_error = "알림 설정(채널 정보)을 찾을 수 없습니다."
         else:
             send_status = "sent"
             send_error = "수집된 새로운 논문이 없습니다."
@@ -155,6 +168,10 @@ async def run_immediate_collection(user_email, notification_id, keywords, source
             error_message=send_error
         )
         logger.info(f"✅ [Background] 즉시 수집 완료 ({user_email})")
+        
+    except HTTPException:
+        
+        raise
         
     except Exception as e:
         logger.error(f"❌ [Background] 즉시 수집 오류: {e}")
@@ -179,12 +196,43 @@ def get_notification_setting(authorization: Optional[str] = Header(None)):
         user_email = get_email_from_token(authorization)
         result = NoticeService.get_notification_settings(user_email)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
             "error": str(e),
             "message": "설정 조회 실패"
         }
+
+# 이메일 테스트 알림 전송
+@router.post("/test/email")
+async def test_email_notification(authorization: Optional[str] = Header(None)):
+    """이메일로 테스트 알림 발송"""
+    try:
+        user_email = get_email_from_token(authorization)
+        from email_module.service import send_test_notification
+        result = send_test_notification(user_email)
+        # 발송 기록
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM notification_settings WHERE user_email = %s LIMIT 1", (user_email,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            NoticeService.record_alert(
+                notification_settings_id=row[0],
+                user_email=user_email,
+                alert_type="test",
+                papers_count=0,
+                status="sent" if result.get("ok") else "failed",
+                error_message=result.get("error") if not result.get("ok") else None
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"ok": False, "error": str(e), "message": "이메일 테스트 발송 실패"}
 
 # Phase 3: 테스트 알림 전송
 @router.post("/test/{channel}")
@@ -279,6 +327,8 @@ async def test_notification(
         )
         
         return send_result
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
@@ -296,6 +346,8 @@ def pause_notification(authorization: Optional[str] = Header(None)):
         user_email = get_email_from_token(authorization)
         result = NoticeService.pause_notification(user_email)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
@@ -313,6 +365,8 @@ def resume_notification(authorization: Optional[str] = Header(None)):
         user_email = get_email_from_token(authorization)
         result = NoticeService.resume_notification(user_email)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
@@ -330,6 +384,8 @@ def get_agent_status(authorization: Optional[str] = Header(None)):
         user_email = get_email_from_token(authorization)
         result = NoticeService.get_agent_status(user_email)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
@@ -358,12 +414,40 @@ def delete_notification_setting(
         return result
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         return {
             "ok": False,
             "error": str(e),
             "message": "삭제 실패"
         }
+
+# 이메일 채널 연결 저장
+@router.patch("/email/connect")
+def connect_email_channel(authorization: Optional[str] = Header(None)):
+    """현재 로그인 이메일로 이메일 알림 채널 연결"""
+    try:
+        user_email = get_email_from_token(authorization)
+        result = NoticeService.connect_email_channel(user_email, user_email)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"ok": False, "error": str(e), "message": "이메일 연결 실패"}
+
+# 이메일 채널 연결 해제
+@router.patch("/email/disconnect")
+def disconnect_email_channel(authorization: Optional[str] = Header(None)):
+    """이메일 알림 채널 연결 해제"""
+    try:
+        user_email = get_email_from_token(authorization)
+        result = NoticeService.disconnect_email_channel(user_email)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"ok": False, "error": str(e), "message": "이메일 해제 실패"}
 
 # Phase 6: 대시보드 KPI 통계 조회
 @router.get("/stats")
@@ -374,6 +458,8 @@ def get_dashboard_stats(authorization: Optional[str] = Header(None)):
     try:
         user_email = get_email_from_token(authorization)
         return NoticeService.get_dashboard_stats(user_email)
+    except HTTPException:
+        raise
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -389,5 +475,7 @@ def get_trend_data(
     try:
         user_email = get_email_from_token(authorization)
         return NoticeService.get_trend_data(user_email, period)
+    except HTTPException:
+        raise
     except Exception as e:
         return {"ok": False, "error": str(e)}

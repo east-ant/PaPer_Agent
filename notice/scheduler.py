@@ -41,7 +41,9 @@ async def send_scheduled_alert(notification_settings_id: int, user_email: str):
                 a.is_active,
                 n.id as notification_id,
                 n.channel_id,
-                n.webhook_url
+                n.webhook_url,
+                n.email_connected,
+                n.email_address
             FROM agent_configs a
             JOIN notification_settings n ON a.user_email = n.user_email
             WHERE n.id = %s
@@ -103,6 +105,16 @@ async def send_scheduled_alert(notification_settings_id: int, user_email: str):
             else:
                 send_result = {"ok": False, "error": "발송 수단이 없음"}
             
+            # 이메일 발송 (이메일이 연결되어 있을 때)
+            email_connected = result.get("email_connected")
+            email_address = result.get("email_address")
+            if email_connected and email_address:
+                from email_module.service import send_papers_email
+                email_result = send_papers_email(email_address, papers, user_email=user_email)
+                if not send_result.get("ok") and email_result.get("ok"):
+                    send_result = email_result # 이메일이라도 성공했으면 성공으로 간주
+
+            error_msg = None
             if send_result.get("ok"):
                 status = "sent"
                 # 발송 성공 시 기록
@@ -136,17 +148,17 @@ async def send_scheduled_alert(notification_settings_id: int, user_email: str):
 def get_cron_trigger(frequency: str):
     """
     주기에 따른 CronTrigger 반환
-    모두 오후 2시(14:00)에 실행
+    모두 오후 12시(12:00)에 실행
     """
     if frequency == "daily":
-        return CronTrigger(hour=14, minute=0)  # 매일 오후 2시
+        return CronTrigger(hour=12, minute=0)  # 매일 오후 12시
     elif frequency == "3days":
         # 3일마다 (처음 실행 후 3일 간격으로 설정)
-        return CronTrigger(hour=14, minute=0)
+        return CronTrigger(hour=12, minute=0)
     elif frequency == "weekly":
-        return CronTrigger(hour=14, minute=0, day_of_week="0")  # 매주 월요일 오후 2시
+        return CronTrigger(hour=12, minute=0, day_of_week="0")  # 매주 월요일 오후 12시
     else:
-        return CronTrigger(hour=14, minute=0)  # 기본값: 매일 오후 2시
+        return CronTrigger(hour=12, minute=0)  # 기본값: 매일 오후 12시
 
 def add_job(notification_settings_id: int, user_email: str, frequency: str):
     """

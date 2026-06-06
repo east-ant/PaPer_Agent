@@ -185,6 +185,7 @@ class PaperAgentRunner:
 
         return self._unique(variants)
 
+
     def _search_round(self, terms: list[str], limit: int) -> list[dict]:
         sources = self._normalize_sources(self.goal.sources)
         results: list[dict] = []
