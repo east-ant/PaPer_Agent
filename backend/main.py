@@ -79,7 +79,50 @@ def shutdown():
 
 @app.get("/")
 def root():
-    return {"message": "Paper Agent 서버 정상 동작"}
+    return {"message": "Paper Agent API"}
+
+
+@app.get("/api/feedback")
+def save_feedback(email: str, paper_id: str, title: str = "", feedback: str = "up"):
+    """
+    이메일/디스코드 링크 클릭으로 논문 피드백을 기록합니다.
+    feedback: 'up' (유용함) 또는 'down' (관련성 낮음)
+    """
+    from fastapi.responses import HTMLResponse
+    import pymysql
+    from database import get_connection
+
+    if feedback not in ("up", "down"):
+        return HTMLResponse(content="<h1>잘못된 피드백 값입니다.</h1>")
+    
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO paper_feedback (user_email, paper_id, title, feedback)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE feedback = %s, feedback_at = CURRENT_TIMESTAMP
+        """, (email, paper_id, title[:500], feedback, feedback))
+        conn.commit()
+        conn.close()
+        
+        label = "유용했어요 👍" if feedback == "up" else "관련성이 낮아요 👎"
+        html_content = f"""
+        <html>
+        <head><title>피드백 저장</title></head>
+        <body style="font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background: #f9fafb;">
+            <div style="background: white; padding: 2rem; border-radius: 1rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h2 style="color: #4f46e5; margin-bottom: 0.5rem;">피드백 감사합니다!</h2>
+                <p style="color: #374151;">'{label}' 피드백이 에이전트에 반영되었습니다.</p>
+                <p style="color: #9ca3af; font-size: 0.8rem; margin-top: 1rem;">이 창은 잠시 후 자동으로 닫힙니다.</p>
+            </div>
+            <script>setTimeout(() => window.close(), 2500);</script>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content)
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>오류 발생</h1><p>{str(e)}</p>")
 
 
 # Discord OAuth 호환 콜백

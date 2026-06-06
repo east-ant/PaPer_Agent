@@ -164,7 +164,21 @@ def init_db():
             is_verified BOOLEAN DEFAULT FALSE
         )
     """)
-    
+
+    # 8. paper_feedback 테이블 (사용자 피드백 - 에이전트 학습용)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS paper_feedback (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_email VARCHAR(255) NOT NULL,
+            paper_id VARCHAR(255) NOT NULL,
+            title VARCHAR(500),
+            feedback ENUM('up', 'down') NOT NULL,
+            feedback_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_email) REFERENCES users(email),
+            UNIQUE KEY uq_user_paper_feedback (user_email, paper_id)
+        )
+    """)
+
     conn.commit()
     # --- 이메일 알림 컬럼 마이그레이션 ---
     try:

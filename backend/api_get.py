@@ -25,19 +25,7 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-try:
-    from config import settings
-except ImportError:
-    try:
-        from backend.config import settings
-    except ImportError:
-        try:
-            from api_down.config import settings
-        except ImportError:
-            try:
-                from Final_Integration_Code.config import settings
-            except ImportError:
-                settings = None
+from config import settings
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")

@@ -19,20 +19,105 @@ llm = ChatOpenAI(
 
 parser = StrOutputParser()
 
+import re
 
+translate_keyword_prompt = PromptTemplate(
+    input_variables=["keyword"],
+    template="""Translate the following search keyword into a highly relevant English academic term for querying research papers on ArXiv or Semantic Scholar.
+If the keyword is already in English, return it as is.
+Return ONLY the English keyword without any explanation, markdown, or quotes.
+
+Keyword: {keyword}"""
+)
+translate_keyword_chain = translate_keyword_prompt | llm | parser
+
+def translate_keyword_to_english(keyword: str) -> str:
+    if not keyword or not keyword.strip():
+        return ""
+    # 영문/숫자/기본 기호만 포함된 경우 바로 반환
+    if re.match(r'^[\x00-\x7F]+$', keyword):
+        return keyword.strip()
+    try:
+        translated = translate_keyword_chain.invoke({"keyword": keyword})
+        return translated.strip()
+    except Exception as e:
+        print(f"Keyword translation error: {e}")
+        return keyword.strip()
+
+
+# 다중 라운드 검색어(Search Plan) 생성 프롬프트
+generate_plan_prompt = PromptTemplate(
+    input_variables=["keywords", "recent_history"],
+    template="""You are an expert academic research assistant.
+The user is interested in finding recent, impactful research papers based on the following keywords:
+{keywords}
+
+[User's Long-term Memory (Recently saved papers)]
+{recent_history}
+
+Your task is to generate a progressive 3-round search strategy to find the best papers on ArXiv or Semantic Scholar.
+IMPORTANT: The user has already read the papers listed in the Long-term Memory. DO NOT generate search terms that will just find the exact same papers or identical methodologies. Instead, find novel approaches, opposing methodologies (contrasting approaches), or advanced follow-ups that push the boundary further. If the memory is empty, just proceed with normal expansions.
+
+- Round 1 (Core): Specific academic terms based exactly on the user's keywords, but aiming for fresh papers not in the memory. (max 3 terms)
+- Round 2 (Trend/Pain point): Search terms focusing on the latest trends, bottlenecks, or pain points related to the keywords (e.g., if keywords are RAG, terms could be "hallucination mitigation in RAG"). (max 4 terms)
+- Round 3 (Broad/Application): Broader methodologies, applications, or combinations with other fields. (max 4 terms)
+
+Return ONLY a valid JSON object matching the exact structure below, without any markdown formatting, backticks, or comments.
+{{
+    "round_1": ["term1", "term2"],
+    "round_2": ["term3", "term4"],
+    "round_3": ["term5", "term6"]
+}}
+"""
+)
+generate_search_plan_chain = generate_plan_prompt | llm | parser
+
+# 검색 실패 시 복구(Self-Correction) 프롬프트
+fallback_prompt = PromptTemplate(
+    input_variables=["failed_terms", "reason", "recent_history"],
+    template="""You are an academic search agent trying to find research papers.
+You recently searched for the following terms but failed to find enough relevant papers.
+Failed terms: {failed_terms}
+Reason for failure: {reason}
+
+[User's Long-term Memory (Recently saved papers)]
+{recent_history}
+
+Suggest 3 new, alternative search queries that are related but take a slightly broader or different perspective to improve the chances of finding relevant academic papers. Make sure they don't overlap with the methodologies already seen in the user's Long-term Memory.
+Return ONLY a valid JSON array of strings, without any markdown formatting or comments.
+[
+    "new term 1",
+    "new term 2",
+    "new term 3"
+]
+"""
+)
+generate_fallback_chain = fallback_prompt | llm | parser
 # abstract mode: abstract-only academic summary.
 translate_prompt = PromptTemplate(
-    input_variables=["abstract"],
-    template="""다음 논문 초록을 요약하라.
+    input_variables=["abstract", "user_keywords", "agent_insight"],
+    template="""다음 논문 초록을 번역하고 요약하라.
+
+[내부 참고 자료 - 절대 출력에 포함하지 마라]
+- 사용자 관심사: {user_keywords}
+- 에이전트의 선정 이유 (한국어로 자연스럽게 풀어 쓰되, 이 원문 텍스트를 그대로 복사하지 마라): {agent_insight}
 
 요구사항:
-- 출력은 반드시 [요약] 섹션만 사용하라.
-- [요약]은 정확히 2줄로 작성하라.
-- 연구 문제, 방법론, 핵심 결과, 이론적 기여 중 초록에서 확인 가능한 내용을 우선 포함하라.
-- 전공자도 내용이 손상되지 않되, 비전공자도 흐름을 따라갈 수 있는 수준으로 작성하라.
-- 학술 개념어가 처음 등장할 때는 괄호 안에 한 줄 이내로 뜻을 병기하라. 단, 인명·모델명 등 고유명사는 풀이하지 않는다. 같은 개념이 재등장할 때는 풀이 없이 용어만 사용하라.
-- "좋다", "유용하다" 같은 모호한 표현은 피하라.
-- 초록에 없는 내용은 추측하지 마라.
+- 출력은 반드시 아래 두 섹션만 사용하라.
+- [내부 참고 자료] 섹션의 텍스트는 단 한 글자도 출력에 그대로 복사하지 마라.
+
+[에이전트 브리핑]
+사용자님을 부르며 대화체로 2~3줄 작성하라.
+위의 [내부 참고 자료]를 참고하여, 이 논문이 사용자의 관심사와 어떻게 연결되는지, 어떤 점에서 가치가 있는지 한국어로 자연스럽게 설명하라.
+절대로 'Agent Insight:', 'agent_insight', '내부 참고 자료' 등의 문구나 영어 원문을 출력에 포함시키지 마라.
+
+[요약]
+정확히 2~3줄로 작성하라.
+연구 문제, 방법론, 핵심 결과, 이론적 기여 중 초록에서 확인 가능한 내용을 우선 포함하라.
+전공자도 내용이 손상되지 않되, 비전공자도 흐름을 따라갈 수 있는 수준으로 작성하라.
+학술 개념어가 처음 등장할 때는 괄호 안에 한 줄 이내로 뜻을 병기하라. 단, 인명·모델명 등 고유명사는 풀이하지 않는다.
+"좋다", "유용하다" 같은 모호한 표현은 피하라.
+초록에 없는 내용은 추측하지 마라.
 
 [초록]
 {abstract}""",
@@ -64,6 +149,32 @@ analyze_prompt = PromptTemplate(
 )
 analyze_chain = analyze_prompt | llm | parser
 
+# 에이전트 전용 비판적 필터링 체인 (Critic & Filtering)
+critic_prompt = PromptTemplate(
+    input_variables=["keyword", "title", "abstract"],
+    template="""You are a strict, critical academic research agent.
+Your task is to evaluate if a research paper is genuinely relevant to the user's intended research field and keyword.
+Users often search for terms in IT/AI fields, but search results might return papers from completely unrelated fields (like agriculture, medicine, biology) that just happen to use the same acronym or word.
+
+Evaluate the paper strictly based on the following criteria:
+1. Is the academic context (field of study) relevant to the user's keyword? (e.g., if keyword is "Apple", reject agriculture papers. If "RAG", reject unrelated chemistry biology papers).
+2. Is it a dataset paper or a simple review/survey without novel methodology? (If yes, reject if the user wants novel research).
+
+Instructions:
+- If the paper is NOT genuinely relevant to the core context of the user's keyword, return ONLY the word `IRRELEVANT`.
+- If the paper is relevant and high-quality, return `RELEVANT` on the first line, and on the second line provide a concise 1-sentence "Agent Insight" explaining why this paper is valuable for the user.
+
+[Keyword]
+{keyword}
+
+[Paper Title]
+{title}
+
+[Paper Abstract]
+{abstract}"""
+)
+critic_chain = critic_prompt | llm | parser
+
 
 # step 1: extract structured information before review-style summarization.
 extract_prompt = PromptTemplate(
@@ -89,11 +200,21 @@ extract_chain = extract_prompt | llm | parser
 
 # body mode: body-centered review, excluding the abstract as the main source.
 body_prompt = PromptTemplate(
-    input_variables=["abstract", "body", "extracted"],
+    input_variables=["abstract", "body", "extracted", "user_keywords", "agent_insight"],
     template="""다음 논문을 요약하고 비판적으로 분석하라.
 초록은 배경 참고용으로만 사용하고, 요약의 중심 근거는 PDF 본문에서 초록을 제외한 나머지 내용으로 삼아라.
 
-출력 형식은 반드시 아래 두 섹션만 사용하라.
+[내부 참고 자료 - 절대 출력에 포함하지 마라]
+- 사용자 관심사: {user_keywords}
+- 에이전트의 선정 이유 (한국어로 자연스럽게 풀어 쓰되, 이 원문 텍스트를 그대로 복사하지 마라): {agent_insight}
+
+출력 형식은 반드시 아래 세 섹션만 사용하라.
+- [내부 참고 자료] 섹션의 텍스트는 단 한 글자도 출력에 그대로 복사하지 마라.
+
+[에이전트 브리핑]
+사용자님을 부르며 대화체로 2~3줄 작성하라.
+위의 [내부 참고 자료]를 참고하여, 이 논문이 사용자의 관심사 측면에서 어떤 가치가 있는지 한국어로 자연스럽게 설명하라.
+절대로 'Agent Insight:', 'agent_insight', '내부 참고 자료' 등의 문구나 영어 원문을 출력에 포함시키지 마라.
 
 [요약]
 4~5줄로 작성하라.
@@ -101,7 +222,7 @@ body_prompt = PromptTemplate(
 수학적 모델과 핵심 개념이 논문에 등장하면 명확히 포함하라.
 단순 설명이 아니라 논문의 이론적 기여를 강조하라.
 전공자도 내용이 손상되지 않되, 비전공자도 흐름을 따라갈 수 있는 수준으로 작성하라.
-학술 개념어가 처음 등장할 때는 괄호 안에 한 줄 이내로 뜻을 병기하라. 단, 인명·모델명 등 고유명사는 풀이하지 않는다. 같은 개념이 재등장할 때는 풀이 없이 용어만 사용하라.
+학술 개념어가 처음 등장할 때는 괄호 안에 한 줄 이내로 뜻을 병기하라. 단, 인명·모델명 등 고유명사는 풀이하지 않는다.
 "좋다", "유용하다" 같은 모호한 표현은 피하라.
 
 [비판적 분석]
@@ -124,10 +245,20 @@ body_chain = body_prompt | llm | parser
 
 # full mode: full-paper academic review.
 full_prompt = PromptTemplate(
-    input_variables=["text", "extracted"],
+    input_variables=["text", "extracted", "user_keywords", "agent_insight"],
     template="""다음 논문을 요약하고 비판적으로 분석하라.
 
-출력 형식은 반드시 아래 두 섹션만 사용하라.
+[내부 참고 자료 - 절대 출력에 포함하지 마라]
+- 사용자 관심사: {user_keywords}
+- 에이전트의 선정 이유 (한국어로 자연스럽게 풀어 쓰되, 이 원문 텍스트를 그대로 복사하지 마라): {agent_insight}
+
+출력 형식은 반드시 아래 세 섹션만 사용하라.
+- [내부 참고 자료] 섹션의 텍스트는 단 한 글자도 출력에 그대로 복사하지 마라.
+
+[에이전트 브리핑]
+사용자님을 부르며 대화체로 2~3줄 작성하라.
+위의 [내부 참고 자료]를 참고하여, 이 논문이 사용자의 관심사 측면에서 어떤 가치가 있는지 한국어로 자연스럽게 설명하라.
+절대로 'Agent Insight:', 'agent_insight', '내부 참고 자료' 등의 문구나 영어 원문을 출력에 포함시키지 마라.
 
 [요약]
 5~7줄로 작성하라.
@@ -135,7 +266,7 @@ full_prompt = PromptTemplate(
 수학적 모델과 핵심 개념을 명확히 포함하라.
 단순 설명이 아니라 논문의 이론적 기여를 강조하라.
 전공자도 내용이 손상되지 않되, 비전공자도 흐름을 따라갈 수 있는 수준으로 작성하라.
-학술 개념어가 처음 등장할 때는 괄호 안에 한 줄 이내로 뜻을 병기하라. 단, 인명·모델명 등 고유명사는 풀이하지 않는다. 같은 개념이 재등장할 때는 풀이 없이 용어만 사용하라.
+학술 개념어가 처음 등장할 때는 괄호 안에 한 줄 이내로 뜻을 병기하라. 단, 인명·모델명 등 고유명사는 풀이하지 않는다.
 "좋다", "유용하다" 같은 모호한 표현은 피하라.
 
 [비판적 분석]
@@ -153,26 +284,34 @@ full_prompt = PromptTemplate(
 full_chain = full_prompt | llm | parser
 
 
-def translate_abstract(abstract: str) -> str:
+def translate_abstract(abstract: str, user_keywords: str = "", agent_insight: str = "") -> str:
     if not abstract:
         return ""
-    return translate_chain.invoke({"abstract": abstract})
+    return translate_chain.invoke({
+        "abstract": abstract,
+        "user_keywords": user_keywords,
+        "agent_insight": agent_insight
+    })
 
 
-def summarize_body(abstract: str, body_text: str) -> str:
+def summarize_body(abstract: str, body_text: str, user_keywords: str = "", agent_insight: str = "") -> str:
     extracted = extract_chain.invoke({"text": body_text[:5000]})
     return body_chain.invoke({
         "abstract": abstract,
         "body": body_text[:10000],
         "extracted": extracted,
+        "user_keywords": user_keywords,
+        "agent_insight": agent_insight
     })
 
 
-def summarize_full(full_text: str) -> str:
+def summarize_full(full_text: str, user_keywords: str = "", agent_insight: str = "") -> str:
     extracted = extract_chain.invoke({"text": full_text[:5000]})
     return full_chain.invoke({
         "text": full_text,
         "extracted": extracted,
+        "user_keywords": user_keywords,
+        "agent_insight": agent_insight
     })
 
 

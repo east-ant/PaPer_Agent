@@ -105,6 +105,58 @@ class PaperBot(commands.Bot):
                             await interaction.followup.send(f"❌ 저장 실패: {result.get('message')}", ephemeral=True)
                     except Exception as e:
                         await interaction.followup.send(f"❌ 오류 발생: {str(e)}", ephemeral=True)
+            
+            elif custom_id.startswith("feedback_up:") or custom_id.startswith("feedback_down:"):
+                await interaction.response.defer(ephemeral=True)
+                feedback_type = "up" if custom_id.startswith("feedback_up:") else "down"
+                parts = custom_id.split(":", 2)
+                
+                try:
+                    paper_idx_str = parts[1]
+                    from database import get_connection
+                    import pymysql
+                    conn = get_connection()
+                    cursor = conn.cursor(pymysql.cursors.DictCursor)
+                    cursor.execute("""
+                        SELECT user_email FROM notification_settings
+                        WHERE discord_user_id = %s OR channel_id = %s
+                        ORDER BY id DESC LIMIT 1
+                    """, (str(interaction.user.id), str(interaction.channel_id)))
+                    user_info = cursor.fetchone()
+                    conn.close()
+                    
+                    if not user_info:
+                        await interaction.followup.send("❌ 연결된 사용자 정보를 찾을 수 없습니다.", ephemeral=True)
+                        return
+                    
+                    user_email = user_info["user_email"]
+                    
+                    # 메시지 Embed에서 논문 정보 추출
+                    paper_idx = int(paper_idx_str)
+                    title = ""
+                    link = ""
+                    if paper_idx < len(interaction.message.embeds):
+                        embed = interaction.message.embeds[paper_idx]
+                        import re
+                        title = re.sub(r'^\d+\.\s*', '', embed.title or "")
+                        link = embed.url or ""
+                    
+                    paper_id = link.split("arxiv.org/abs/")[-1] if "arxiv.org/abs/" in link else link
+                    
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        INSERT INTO paper_feedback (user_email, paper_id, title, feedback)
+                        VALUES (%s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE feedback = %s, feedback_at = CURRENT_TIMESTAMP
+                    """, (user_email, paper_id, title[:500], feedback_type, feedback_type))
+                    conn.commit()
+                    conn.close()
+                    
+                    label = "👍 유용했어요" if feedback_type == "up" else "👎 관련성이 낮아요"
+                    await interaction.followup.send(f"'{label}' 피드백이 에이전트에 반영되었습니다. 감사합니다!", ephemeral=True)
+                except Exception as e:
+                    await interaction.followup.send(f"❌ 피드백 저장 오류: {str(e)}", ephemeral=True)
 
 # 싱글톤 봇 인스턴스
 bot = PaperBot()

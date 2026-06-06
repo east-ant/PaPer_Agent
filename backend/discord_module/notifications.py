@@ -132,10 +132,21 @@ class DiscordNotificationService:
                 for i, paper in enumerate(papers[:10]):
                     embed = DiscordNotificationService._create_paper_embed(paper, i + 1, user_email=user_email)
                     embeds.append(embed)
+                    row = []
                     if "_save_button" in paper:
                         btn = paper["_save_button"]
                         btn["label"] = f"📥 #{i+1} 저장"
-                        buttons.append(btn)
+                        row.append(btn)
+                    if "_up_button" in paper:
+                        up = paper["_up_button"]
+                        up["label"] = f"👍"
+                        row.append(up)
+                    if "_down_button" in paper:
+                        down = paper["_down_button"]
+                        down["label"] = f"👎"
+                        row.append(down)
+                    if row:
+                        buttons.append(row)
                 
                 summary_embed = {
                     "title": f"논문 검색 결과 ({len(papers)}개)",
@@ -147,14 +158,13 @@ class DiscordNotificationService:
                 }
                 embeds.insert(0, summary_embed)
                 
-                # 버튼을 Action Rows로 나누기 (최대 5개씩 한 줄)
+                # 각 논문별 버튼 row를 Action Row로 변환 (최대 5개 논문)
                 components = []
-                if buttons:
-                    for i in range(0, min(len(buttons), 25), 5):
-                        components.append({
-                            "type": 1,
-                            "components": buttons[i:i+5]
-                        })
+                for row in buttons[:5]:
+                    components.append({
+                        "type": 1,
+                        "components": row[:5]
+                    })
                 
                 payload = {
                     "embeds": embeds[:10],
@@ -206,10 +216,21 @@ class DiscordNotificationService:
                 for i, paper in enumerate(papers[:10]):
                     embed = DiscordNotificationService._create_paper_embed(paper, i + 1, user_email=user_email)
                     embeds.append(embed)
+                    row = []
                     if "_save_button" in paper:
                         btn = paper["_save_button"]
                         btn["label"] = f"📥 #{i+1} 저장"
-                        buttons.append(btn)
+                        row.append(btn)
+                    if "_up_button" in paper:
+                        up = paper["_up_button"]
+                        up["label"] = "👍"
+                        row.append(up)
+                    if "_down_button" in paper:
+                        down = paper["_down_button"]
+                        down["label"] = "👎"
+                        row.append(down)
+                    if row:
+                        buttons.append(row)
                 
                 summary_embed = {
                     "title": f"논문 검색 결과 ({len(papers)}개)",
@@ -221,14 +242,13 @@ class DiscordNotificationService:
                 }
                 embeds.insert(0, summary_embed)
             
-            # 버튼을 Action Rows로 나누기
+            # 각 논문별 버튼 row를 Action Row로 변환 (최대 5개 논문)
             components = []
-            if buttons:
-                for i in range(0, min(len(buttons), 25), 5):
-                    components.append({
-                        "type": 1,
-                        "components": buttons[i:i+5]
-                    })
+            for row in buttons[:5]:
+                components.append({
+                    "type": 1,
+                    "components": row[:5]
+                })
             
             payload = {
                 "embeds": embeds[:10],
@@ -334,6 +354,20 @@ class DiscordNotificationService:
                 "style": 1,  # Primary (파란 버튼)
                 "label": "📥 보관함에 저장",
                 "custom_id": custom_id
+            }
+            # 👍 피드백 버튼
+            paper["_up_button"] = {
+                "type": 2,
+                "style": 3,  # Success (초록 버튼)
+                "label": "👍 유용했어요",
+                "custom_id": f"feedback_up:{index}:{user_email}"
+            }
+            # 👎 피드백 버튼
+            paper["_down_button"] = {
+                "type": 2,
+                "style": 4,  # Danger (빨간 버튼)
+                "label": "👎 관련성 낮아요",
+                "custom_id": f"feedback_down:{index}:{user_email}"
             }
         
         return embed

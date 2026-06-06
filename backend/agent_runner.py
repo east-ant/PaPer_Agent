@@ -17,12 +17,20 @@ from api_get import (
 from config import settings
 
 try:
-    from agent import read_paper_pdf, summarize_body, summarize_full, translate_abstract
+    from agent import (
+        read_paper_pdf, summarize_body, summarize_full, translate_abstract, 
+        translate_keyword_to_english, generate_search_plan_chain, generate_fallback_chain,
+        critic_chain
+    )
 except Exception:
     read_paper_pdf = None
     summarize_body = None
     summarize_full = None
     translate_abstract = None
+    translate_keyword_to_english = lambda x: x
+    generate_search_plan_chain = None
+    generate_fallback_chain = None
+    critic_chain = None
 
 
 SOURCE_ALIASES = {
@@ -86,42 +94,90 @@ class PaperAgentRunner:
 
         for round_index in range(1, self.max_rounds + 1):
             round_terms = plan["rounds"][min(round_index - 1, len(plan["rounds"]) - 1)]
-            fetch_limit = max(10, self.goal.collect_count * (round_index + 2))
-            candidates = self._search_round(round_terms, fetch_limit)
-            ranked = self._rank_candidates(candidates)
+            
+            max_retries = 1
+            retry_count = 0
+            
+            while retry_count <= max_retries:
+                fetch_limit = max(10, self.goal.collect_count * (round_index + 2))
+                candidates = self._search_round(round_terms, fetch_limit)
+                ranked = self._rank_candidates(candidates)
 
-            added = 0
-            for paper in ranked:
-                title_key = normalize_title(paper.get("title"))
-                if not title_key or title_key in seen_titles:
-                    continue
-                if self._was_sent(paper):
-                    continue
+                added = 0
+                for paper in ranked:
+                    title_key = normalize_title(paper.get("title"))
+                    if not title_key or title_key in seen_titles:
+                        continue
+                    if self._was_sent(paper):
+                        continue
 
-                pdf_url = self._pdf_url(paper)
-                if not pdf_url:
-                    self._record("candidate_skipped", {
-                        "title": paper.get("title"),
-                        "reason": "pdf_missing",
-                        "query": paper.get("_agent_query"),
-                    })
-                    continue
+                    pdf_url = self._pdf_url(paper)
+                    if not pdf_url:
+                        self._record("candidate_skipped", {
+                            "title": paper.get("title"),
+                            "reason": "pdf_missing",
+                            "query": paper.get("_agent_query"),
+                        })
+                        continue
 
-                paper["_agent_pdf_url"] = pdf_url
-                selected.append(paper)
-                seen_titles.add(title_key)
-                added += 1
+                    # 비판적 사고 평가 (Critic Filtering)
+                    is_relevant = self._evaluate_with_critic(paper)
+                    if not is_relevant:
+                        self._record("candidate_skipped", {
+                            "title": paper.get("title"),
+                            "reason": "critic_rejected",
+                            "query": paper.get("_agent_query"),
+                        })
+                        continue
+
+                    paper["_agent_pdf_url"] = pdf_url
+                    selected.append(paper)
+                    seen_titles.add(title_key)
+                    added += 1
+                    if len(selected) >= self.goal.collect_count:
+                        break
+
+                self._record("round_completed", {
+                    "round": round_index,
+                    "retry": retry_count,
+                    "terms": round_terms,
+                    "candidates": len(candidates),
+                    "selected_total": len(selected),
+                    "added": added,
+                })
+
                 if len(selected) >= self.goal.collect_count:
                     break
-
-            self._record("round_completed", {
-                "round": round_index,
-                "terms": round_terms,
-                "candidates": len(candidates),
-                "selected_total": len(selected),
-                "added": added,
-            })
-
+                    
+                # Self-Correction: 만약 해당 라운드에서 하나도 건지지 못했고 LLM 체인이 있다면
+                if added == 0 and generate_fallback_chain and retry_count < max_retries:
+                    self._record("self_correction", {
+                        "round": round_index,
+                        "failed_terms": round_terms,
+                        "reason": "No valid new papers found. Generating new queries..."
+                    })
+                    try:
+                        fallback_json = generate_fallback_chain.invoke({
+                            "failed_terms": ", ".join(round_terms),
+                            "reason": "Found irrelevant papers, duplicates, or no PDFs. Need fresh, broader academic search terms.",
+                            "recent_history": getattr(self, "recent_history", "")
+                        })
+                        import json
+                        clean_json = fallback_json.strip()
+                        if clean_json.startswith("```json"):
+                            clean_json = clean_json[7:-3].strip()
+                        elif clean_json.startswith("```"):
+                            clean_json = clean_json[3:-3].strip()
+                        new_terms = json.loads(clean_json)
+                        if isinstance(new_terms, list) and new_terms:
+                            round_terms = new_terms
+                            retry_count += 1
+                            continue
+                    except Exception as e:
+                        print(f"[PaperAgentRunner] Fallback generation error: {e}")
+                
+                break # 더 이상 재시도하지 않음
+                
             if len(selected) >= self.goal.collect_count:
                 break
 
@@ -134,24 +190,116 @@ class PaperAgentRunner:
             "steps": [step.__dict__ for step in self.steps],
         }
 
+    def _fetch_user_memory(self) -> str:
+        if not self.goal.user_email:
+            return ""
+        
+        try:
+            from database import get_connection
+            import pymysql
+            conn = get_connection()
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            memory_lines = []
+            
+            # 1) 최근 북마크 5개 (사용자가 저장한 논문 = 관심사)
+            cursor.execute("""
+                SELECT title, summary FROM bookmarks
+                WHERE user_email = %s
+                ORDER BY bookmarked_at DESC LIMIT 5
+            """, (self.goal.user_email,))
+            bookmarks = cursor.fetchall()
+            if bookmarks:
+                memory_lines.append("[Recently saved papers - User's interests]")
+                for b in bookmarks:
+                    title = b.get("title", "Unknown")
+                    summary = str(b.get("summary") or "")[:150]
+                    memory_lines.append(f"- {title}: {summary}...")
+            
+            # 2) 👍 피드백 논문 (유용하다고 평가한 논문)
+            cursor.execute("""
+                SELECT title FROM paper_feedback
+                WHERE user_email = %s AND feedback = 'up'
+                ORDER BY feedback_at DESC LIMIT 5
+            """, (self.goal.user_email,))
+            ups = cursor.fetchall()
+            if ups:
+                memory_lines.append("\n[Papers user found USEFUL (👍) - Find more like these]")
+                for u in ups:
+                    memory_lines.append(f"- {u.get('title', '')}")
+            
+            # 3) 👎 피드백 논문 (관련성 낮다고 평가한 논문)
+            cursor.execute("""
+                SELECT title FROM paper_feedback
+                WHERE user_email = %s AND feedback = 'down'
+                ORDER BY feedback_at DESC LIMIT 5
+            """, (self.goal.user_email,))
+            downs = cursor.fetchall()
+            if downs:
+                memory_lines.append("\n[Papers user found IRRELEVANT (👎) - Avoid similar papers]")
+                for d in downs:
+                    memory_lines.append(f"- {d.get('title', '')}")
+            
+            conn.close()
+            return "\n".join(memory_lines) if memory_lines else ""
+        except Exception as e:
+            print(f"[PaperAgentRunner] Error fetching memory: {e}")
+            return ""
+
     def _build_search_plan(self) -> dict:
-        base_terms = [kw.strip() for kw in self.goal.keywords if kw and kw.strip()]
+        base_terms = []
+        for kw in self.goal.keywords:
+            if kw and kw.strip():
+                # 한글 등 비영문 키워드가 섞여있다면 LLM을 통해 영문 학술 용어로 변환
+                translated = translate_keyword_to_english(kw.strip())
+                base_terms.append(translated)
+        
         if not base_terms:
             base_terms = ["latest research"]
 
-        expanded = []
-        for term in base_terms[:3]:
-            expanded.extend(self._expand_keyword(term))
+        # 사용자 메모리 로드
+        recent_history = self._fetch_user_memory()
+        self.recent_history = recent_history # Fallback에서 쓰기 위해 저장
 
-        unique_terms = self._unique(base_terms + expanded)
-        return {
-            "objective": "Find recent papers that match the user's research interests.",
-            "sources": self._normalize_sources(self.goal.sources),
-            "rounds": [
+        rounds = [base_terms[:3], [], []]
+        if generate_search_plan_chain:
+            try:
+                plan_json_str = generate_search_plan_chain.invoke({
+                    "keywords": ", ".join(base_terms),
+                    "recent_history": recent_history
+                })
+                import json
+                # 간단한 클렌징 (혹시 마크다운 블록이 있을 경우)
+                clean_json = plan_json_str.strip()
+                if clean_json.startswith("```json"):
+                    clean_json = clean_json[7:-3].strip()
+                elif clean_json.startswith("```"):
+                    clean_json = clean_json[3:-3].strip()
+
+                plan_data = json.loads(clean_json)
+                r1 = plan_data.get("round_1", base_terms[:3])
+                r2 = plan_data.get("round_2", [])
+                r3 = plan_data.get("round_3", [])
+                rounds = [r1, r2, r3]
+            except Exception as e:
+                print(f"[PaperAgentRunner] Error generating search plan: {e}")
+
+        # Fallback to hardcoded expansion if LLM fails
+        if not rounds[1]:
+            expanded = []
+            for term in base_terms[:3]:
+                expanded.extend(self._expand_keyword(term))
+            unique_terms = self._unique(base_terms + expanded)
+            rounds = [
                 base_terms[:3],
                 unique_terms[:6],
                 unique_terms[:10],
-            ],
+            ]
+
+        return {
+            "objective": "Find recent papers that match the user's research interests.",
+            "sources": self._normalize_sources(self.goal.sources),
+            "rounds": rounds,
         }
 
     def _expand_keyword(self, keyword: str) -> list[str]:
@@ -246,6 +394,41 @@ class PaperAgentRunner:
             reverse=True,
         )
 
+    def _evaluate_with_critic(self, paper: dict) -> bool:
+        if not critic_chain:
+            return True # LLM 모듈이 없으면 통과 처리
+        
+        title = paper.get("title", "")
+        abstract = paper.get("abstract") or paper.get("summary") or ""
+        keywords = ", ".join(self.goal.keywords)
+        
+        try:
+            result = critic_chain.invoke({
+                "keyword": keywords,
+                "title": title,
+                "abstract": abstract
+            }).strip()
+            
+            lines = result.split('\n')
+            first_line = lines[0].strip().upper() if lines else ""
+            
+            if "IRRELEVANT" in first_line:
+                return False
+                
+            if "RELEVANT" in first_line:
+                if len(lines) > 1:
+                    # 빈 줄 제외하고 가장 첫 번째 텍스트를 Insight로 저장
+                    for line in lines[1:]:
+                        if line.strip():
+                            paper["_agent_insight"] = line.strip()
+                            break
+                return True
+                
+            return True # Fallback
+        except Exception as e:
+            print(f"[PaperAgentRunner] Critic evaluation error: {e}")
+            return True
+
     def _score_paper(self, paper: dict) -> tuple[float, list[str]]:
         title = str(paper.get("title") or "")
         abstract = str(paper.get("abstract") or paper.get("summary") or "")
@@ -302,64 +485,68 @@ class PaperAgentRunner:
         if self.goal.language != "ko":
             return
 
+        user_keywords = ", ".join(self.goal.keywords)
+
         for paper in papers:
             abstract = paper.get("abstract") or paper.get("summary") or ""
+            agent_insight = paper.get("_agent_insight", "")
+            
             if paper.get("abstract_ko"):
                 continue
             try:
                 summary_mode = self._summary_mode()
                 if summary_mode == "body":
-                    paper["abstract_ko"] = self._summarize_pdf_body(paper, abstract)
+                    paper["abstract_ko"] = self._summarize_pdf_body(paper, abstract, user_keywords, agent_insight)
                 elif summary_mode == "full":
-                    paper["abstract_ko"] = self._summarize_pdf_full(paper, abstract)
+                    paper["abstract_ko"] = self._summarize_pdf_full(paper, abstract, user_keywords, agent_insight)
                 else:
-                    paper["abstract_ko"] = self._summarize_abstract(abstract)
+                    paper["abstract_ko"] = self._summarize_abstract(abstract, user_keywords, agent_insight)
             except Exception as error:
                 self._record("summary_error", {
                     "title": paper.get("title"),
                     "error": str(error),
                 })
 
-    def _summarize_abstract(self, abstract: str) -> str:
+    def _summarize_abstract(self, abstract: str, user_keywords: str = "", agent_insight: str = "") -> str:
         if not abstract or translate_abstract is None:
             return abstract or ""
-        return translate_abstract(abstract)
+        return translate_abstract(abstract, user_keywords, agent_insight)
 
-    def _summarize_pdf_body(self, paper: dict, abstract: str) -> str:
+    def _summarize_pdf_body(self, paper: dict, abstract: str, user_keywords: str = "", agent_insight: str = "") -> str:
         if read_paper_pdf is None or summarize_body is None:
-            return self._summarize_abstract(abstract)
+            return self._summarize_abstract(abstract, user_keywords, agent_insight)
 
         pdf_url = self._pdf_url(paper)
         if not pdf_url:
             self._record("pdf_missing", {"title": paper.get("title"), "mode": "body"})
-            return self._summarize_abstract(abstract)
+            return self._summarize_abstract(abstract, user_keywords, agent_insight)
 
         body_text = read_paper_pdf(pdf_url, max_pages=5)
         if not body_text:
             self._record("pdf_read_empty", {"title": paper.get("title"), "mode": "body"})
-            return self._summarize_abstract(abstract)
+            return self._summarize_abstract(abstract, user_keywords, agent_insight)
 
         paper["_agent_pdf_url"] = pdf_url
         paper["_agent_summary_mode"] = "body"
-        return summarize_body(abstract, body_text)
+        return summarize_body(abstract, body_text, user_keywords, agent_insight)
 
-    def _summarize_pdf_full(self, paper: dict, abstract: str) -> str:
+    def _summarize_pdf_full(self, paper: dict, abstract: str, user_keywords: str = "", agent_insight: str = "") -> str:
         if read_paper_pdf is None or summarize_full is None:
-            return self._summarize_abstract(abstract)
+            return self._summarize_abstract(abstract, user_keywords, agent_insight)
 
         pdf_url = self._pdf_url(paper)
         if not pdf_url:
             self._record("pdf_missing", {"title": paper.get("title"), "mode": "full"})
-            return self._summarize_abstract(abstract)
+            return self._summarize_abstract(abstract, user_keywords, agent_insight)
 
         full_text = read_paper_pdf(pdf_url)
         if not full_text:
             self._record("pdf_read_empty", {"title": paper.get("title"), "mode": "full"})
-            return self._summarize_abstract(abstract)
+            return self._summarize_abstract(abstract, user_keywords, agent_insight)
 
         paper["_agent_pdf_url"] = pdf_url
         paper["_agent_summary_mode"] = "full"
-        return summarize_full(full_text)
+        return summarize_full(full_text, user_keywords, agent_insight)
 
     def _summary_mode(self) -> str:
         mode = str(self.goal.summary_length or "abstract").strip().lower()

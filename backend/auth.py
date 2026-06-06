@@ -124,4 +124,4 @@ def get_me(token: str):
         "picture": picture,
         "google_linked": bool(picture and picture.startswith("http")),
         "created_at": "",
-    }
+    }
