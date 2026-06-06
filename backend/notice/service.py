@@ -170,9 +170,16 @@ class NoticeService:
                 pid = paper.get("id") or paper.get("paperId") or paper.get("arxiv_id") or ""
                 title = paper.get("title", "")
                 abstract = paper.get("abstract", "")
-                summary = paper.get("summary", "")
-                category = paper.get("category", "")
+                summary = paper.get("abstract_ko") or paper.get("summary", "")
+                category = paper.get("categories", [""])[0] if isinstance(paper.get("categories"), list) and paper.get("categories") else paper.get("category", "")
                 published = paper.get("published") or paper.get("year")
+                
+                authors_val = paper.get("authors")
+                if isinstance(authors_val, list):
+                    authors_str = ", ".join(authors_val[:3])
+                else:
+                    authors_str = str(authors_val or "")
+                citations_val = paper.get("citationCount") or paper.get("citations") or 0
                 
                 # sent_papers 기록
                 cursor.execute("""
@@ -185,9 +192,9 @@ class NoticeService:
                     try:
                         cursor.execute("""
                             INSERT IGNORE INTO papers 
-                            (user_email, arxiv_id, title, abstract, summary, category, published)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """, (user_email, pid, title, abstract, summary, category, published))
+                            (user_email, arxiv_id, title, abstract, summary, category, published, authors, citations)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (user_email, pid, title, abstract, summary, category, published, authors_str, citations_val))
                     except Exception as ex:
                         print(f"papers 테이블 저장 실패 (non-critical): {ex}")
             conn.commit()
@@ -280,12 +287,12 @@ class NoticeService:
                             source_results = arxiv_search(keyword, limit_per_source)
                             # arXiv rate limit 방지: 호출 후 3초 대기
                             _time.sleep(3)
-                        elif source_lower == "crossref":
-                            source_results = crossref_search(keyword, limit_per_source)
+                        # elif source_lower == "crossref":
+                        #     source_results = crossref_search(keyword, limit_per_source)
                         elif source_lower in ["semantic", "semantic scholar"]:
                             source_results = semantic_search(keyword, settings.semantic_scholar_api_key, limit_per_source)
-                        elif source_lower == "core":
-                            source_results = core_search(keyword, settings.core_api_key, limit_per_source)
+                        # elif source_lower == "core":
+                        #     source_results = core_search(keyword, settings.core_api_key, limit_per_source)
                         
                         # 중복 방지 필터링 (이미 발송된 논문 제외)
                         for p in source_results:
@@ -414,15 +421,11 @@ class NoticeService:
             source = paper.get("source", "Unknown")
             citation_count = paper.get("citationCount") or 0
             
-            # 요약 길이 조정 (한국어 초록 우선, 없으면 영문 abstract)
+            # 요약 내용 (한국어 초록 우선, 없으면 영문 abstract)
             summary_to_use = abstract_ko if abstract_ko else abstract
             
-            if summary_length == "short":
-                summary_text = summary_to_use[:100]
-            elif summary_length == "medium":
-                summary_text = summary_to_use[:200]
-            else:  # long
-                summary_text = summary_to_use[:400]
+            # Discord description 제한(4096) 고려하여 안전하게 4000자로 제한
+            summary_text = summary_to_use[:4000]
             
             # 저자 문자열
             authors_str = ", ".join(authors[:2]) if isinstance(authors, list) else str(authors)
@@ -460,15 +463,7 @@ class NoticeService:
                 }
             ]
             
-            # 번역된 초록 추가
-            if abstract_ko:
-                fields.append({
-                    "name": "초록 (한국어)",
-                    "value": abstract_ko[:1024] if len(abstract_ko) > 1024 else abstract_ko,
-                    "inline": False
-                })
-            
-            # 본문 요약 추가
+            # 본문 요약 추가 (필드 제한 1024자)
             if body_summary:
                 fields.append({
                     "name": "본문 요약",
@@ -529,8 +524,11 @@ class NoticeService:
                     n.id as notification_id,
                     n.discord_username,
                     n.discord_channel_id,
+                    n.channel_id,
                     n.last_discord_test_status,
-                    n.last_discord_test_at
+                    n.last_discord_test_at,
+                    n.email_connected,
+                    n.email_address
                 FROM agent_configs a
                 LEFT JOIN notification_settings n ON a.user_email = n.user_email
                 WHERE a.user_email = %s
@@ -540,6 +538,16 @@ class NoticeService:
             conn.close()
             
             if result:
+                # channel_id를 배열로 파싱
+                raw_ch = result.get("discord_channel_id") or result.get("channel_id")
+                ch_ids = []
+                if raw_ch:
+                    try:
+                        parsed = json.loads(raw_ch)
+                        ch_ids = parsed if isinstance(parsed, list) else [str(raw_ch)]
+                    except:
+                        ch_ids = [str(raw_ch)]
+
                 return {
                     "ok": True,
                     "agent_config_id": result.get("id"),
@@ -556,8 +564,13 @@ class NoticeService:
                             "connected": bool(result.get("discord_username")),
                             "username": result.get("discord_username"),
                             "channel_id": result.get("discord_channel_id"),
+                            "channel_ids": ch_ids,
                             "lastTestStatus": result.get("last_discord_test_status"),
                             "lastTestAt": int(result.get("last_discord_test_at").timestamp()) if result.get("last_discord_test_at") else None
+                        },
+                        "email": {
+                            "connected": bool(result.get("email_connected")),
+                            "address": result.get("email_address")
                         }
                     }
                 }
@@ -812,6 +825,17 @@ class NoticeService:
             conn.close()
             
             if result:
+                # channel_id 파싱
+                raw_ch = result.get("discord_channel_id") or result.get("channel_id")
+                ch_ids = []
+                if raw_ch:
+                    try:
+                        import json as _json
+                        parsed = _json.loads(raw_ch)
+                        ch_ids = parsed if isinstance(parsed, list) else [str(raw_ch)]
+                    except:
+                        ch_ids = [str(raw_ch)]
+
                 return {
                     "ok": True,
                     "is_active": bool(result.get("is_active")),
@@ -827,12 +851,13 @@ class NoticeService:
                             "connected": bool(result.get("discord_username")),
                             "username": result.get("discord_username"),
                             "channel_id": result.get("discord_channel_id"),
+                            "channel_ids": ch_ids,
                             "lastTestStatus": result.get("last_discord_test_status"),
                             "lastTestAt": int(result.get("last_discord_test_at").timestamp()) if result.get("last_discord_test_at") else None,
                         },
                         "email": {
                             "connected": bool(result.get("email_connected")),
-                            "email": result.get("email_address"),
+                            "address": result.get("email_address"),
                         }
                     },
                     "updated_at": int(result.get("updated_at").timestamp()) if result.get("updated_at") else None,
@@ -905,16 +930,25 @@ class NoticeService:
             elif weekly > 0:
                 growth = "+100%"
 
-            # 4. 인기 카테고리 TOP 3 (전역)
-            cursor.execute("""
-                SELECT category as label, COUNT(*) as count
-                FROM papers
-                WHERE category IS NOT NULL AND category != ''
-                GROUP BY category
-                ORDER BY count DESC
-                LIMIT 3
-            """)
-            top_keywords = cursor.fetchall()
+            # 4. 인기 키워드 TOP 3 (전역 - agent_configs 기반)
+            cursor.execute("SELECT keywords FROM agent_configs WHERE keywords IS NOT NULL")
+            configs = cursor.fetchall()
+            
+            keyword_counts = {}
+            import json
+            for config in configs:
+                try:
+                    kw_list = json.loads(config["keywords"]) if isinstance(config["keywords"], str) else config["keywords"]
+                    if isinstance(kw_list, list):
+                        for kw in kw_list:
+                            kw_clean = str(kw).strip()
+                            if kw_clean:
+                                keyword_counts[kw_clean] = keyword_counts.get(kw_clean, 0) + 1
+                except Exception:
+                    continue
+            
+            sorted_keywords = sorted(keyword_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+            top_keywords = [{"label": k, "count": v} for k, v in sorted_keywords]
 
             conn.close()
             

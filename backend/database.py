@@ -40,9 +40,22 @@ def init_db():
             published DATETIME,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             user_email VARCHAR(255),
+            authors TEXT,
+            citations INT DEFAULT 0,
             FOREIGN KEY (user_email) REFERENCES users(email)
         )
     """)
+    
+    # 기존 papers 테이블에 컬럼 추가 (이미 존재하면 무시됨)
+    try:
+        cursor.execute("ALTER TABLE papers ADD COLUMN authors TEXT")
+    except Exception:
+        pass
+        
+    try:
+        cursor.execute("ALTER TABLE papers ADD COLUMN citations INT DEFAULT 0")
+    except Exception:
+        pass
     
     # 2. agent_configs 테이블 (사용자 명세 반영)
     cursor.execute("""
@@ -358,8 +371,9 @@ def get_papers(user_email: str = None):
         row["link"] = row.get("arxiv_id") or ""
         row["url"] = row.get("arxiv_id") or ""
         row["journal"] = row.get("category") or "arXiv"
-        row["citations"] = 0
+        row["citations"] = row.get("citations") or 0
         row["growth"] = 0
-        row["authors"] = []
+        authors_val = row.get("authors")
+        row["authors"] = [a.strip() for a in authors_val.split(",")] if authors_val else []
         
     return result

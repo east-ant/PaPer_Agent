@@ -66,11 +66,19 @@ class PaperBot(commands.Bot):
                             link = embed.url if embed.url else ""
                             source = "discord_bot"
                             
+                            authors = ""
+                            citations = 0
                             if embed.fields:
                                 for field in embed.fields:
                                     if field.name == "출처":
                                         source = field.value
-                                        break
+                                    elif field.name == "저자":
+                                        authors = field.value
+                                    elif field.name == "인용 수":
+                                        import re
+                                        match = re.search(r'\d+', field.value)
+                                        if match:
+                                            citations = int(match.group())
                             
                             # 아카이브 ID 추출 시도 (url에서)
                             paper_id = ""
@@ -86,7 +94,9 @@ class PaperBot(commands.Bot):
                                 "title": title,
                                 "summary": summary,
                                 "link": link,
-                                "source": source
+                                "source": source,
+                                "authors": authors if 'authors' in locals() else "",
+                                "citations": citations if 'citations' in locals() else 0
                             })
                         
                         if result.get("ok"):

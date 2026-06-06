@@ -4,10 +4,10 @@ import { getAgentStatus } from '../../utils/agentStatus'
 import styles from './Topbar.module.css'
 
 const STATUS = {
-  unset:         { label: '미설정',   dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)', text: 'var(--status-neutral)' },
+  unset: { label: '미설정', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)', text: 'var(--status-neutral)' },
   not_connected: { label: '연결 필요', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)', text: 'var(--status-neutral)' },
-  active:        { label: '활성화',   dot: 'var(--status-active-dot)',  bg: 'var(--status-active-bg)',  text: 'var(--status-active)' },
-  paused:        { label: '일시정지', dot: 'var(--status-error-dot)',   bg: 'var(--status-error-bg)',   text: 'var(--status-error)' },
+  active: { label: '활성화', dot: 'var(--status-active-dot)', bg: 'var(--status-active-bg)', text: 'var(--status-active)' },
+  paused: { label: '일시정지', dot: 'var(--status-error-dot)', bg: 'var(--status-error-bg)', text: 'var(--status-error)' },
 }
 
 const PAGE_TITLES = {
@@ -18,20 +18,20 @@ const PAGE_TITLES = {
 
 const TABS = [
   { to: '/dashboard', key: 'total', label: '통합' },
-  { to: '/dashboard?tab=popular', key: 'popular', label: '인기/신규' },
+  { to: '/dashboard?tab=popular', key: 'popular', label: '신규' },
   { to: '/dashboard?tab=archive', key: 'archive', label: '내보관함' },
 ]
 
 export default function Topbar() {
-  const [params]   = useSearchParams()
-  const location   = useLocation()
-  const { agent }  = useAgentStore()
-  const status     = getAgentStatus(agent)
-  const tab        = params.get('tab') || 'total'
-  const cfg        = STATUS[status]
+  const [params] = useSearchParams()
+  const location = useLocation()
+  const { agent } = useAgentStore()
+  const status = getAgentStatus(agent)
+  const tab = params.get('tab') || 'total'
+  const cfg = STATUS[status]
   const hasDiscord = agent.notifications?.discord?.connected ?? false
-  const hasSlack   = agent.notifications?.slack?.connected ?? false
-  const hasEmail   = agent.notifications?.email?.connected ?? false
+  const hasSlack = agent.notifications?.slack?.connected ?? false
+  const hasEmail = agent.notifications?.email?.connected ?? false
   const isDashboard = location.pathname === '/dashboard'
   const pageTitle = PAGE_TITLES[location.pathname]
 
@@ -81,8 +81,8 @@ export default function Topbar() {
           {status !== 'unset' && (
             <div className={`mt-3 space-y-2 pt-3 ${styles.popoverDivider}`}>
               <StatusRow label="Discord" active={hasDiscord} />
-              <StatusRow label="Slack"   active={hasSlack} />
-              <StatusRow label="이메일"  active={hasEmail} />
+              <StatusRow label="Slack" active={hasSlack} />
+              <StatusRow label="이메일" active={hasEmail} />
             </div>
           )}
           {status === 'active' && (

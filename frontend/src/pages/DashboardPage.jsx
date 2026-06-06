@@ -29,16 +29,15 @@ export default function DashboardPage() {
     fetchBookmarks()
   }, [fetchBookmarks])
 
-  if (status === 'unset') return <EmptyState />
-
   return (
     <main className="flex-1 p-4">
       {tab === 'popular' && <PopularPage />}
       {tab === 'archive' && <ArchivePage />}
-      {tab !== 'popular' && tab !== 'archive' && <TotalPage agent={agent} />}
+      {tab !== 'popular' && tab !== 'archive' && <TotalPage agent={agent} status={status} />}
     </main>
   )
 }
+
 
 /* ── Empty state ── */
 function EmptyState() {
@@ -91,7 +90,7 @@ function SkeletonPaperRow({ first = false }) {
 }
 
 /* ── Total tab ── */
-function TotalPage({ agent }) {
+function TotalPage({ agent, status }) {
   const [trendPeriod, setTrendPeriod] = useState('주별')
   const [papers, setPapers] = useState([])
   const [stats, setStats] = useState(null)
@@ -101,7 +100,7 @@ function TotalPage({ agent }) {
     let cancelled = false
     const defaultStats = { totalPapers: 0, weeklyAdded: 0, weeklyGrowth: '0%', topKeywords: [], updatedAt: '-' }
     Promise.all([
-      fetchPapers({ limit: agent.collectCount || 5, sort: 'latest' }).catch(() => []),
+      fetchPapers({ limit: 2, sort: 'latest' }).catch(() => []),
       fetchStats().catch(() => defaultStats),
     ]).then(([paperData, statsData]) => {
       if (cancelled) return
@@ -135,6 +134,42 @@ function TotalPage({ agent }) {
 
   return (
     <div className="animate-fade-up space-y-2">
+      {/* 에이전트 미설정 안내 배너 */}
+      {status === 'unset' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          padding: '10px 14px',
+          borderRadius: '10px',
+          background: 'rgba(99,102,241,0.08)',
+          border: '1px solid rgba(99,102,241,0.2)',
+          fontSize: '12px',
+        }}>
+          <span style={{ color: 'var(--text-secondary, #6b7280)' }}>
+            📋 에이전트를 설정하면 키워드에 맞는 논문을 자동 수집합니다.
+          </span>
+          <Link
+            to="/agent"
+            style={{
+              flexShrink: 0,
+              padding: '4px 12px',
+              borderRadius: '6px',
+              background: '#6366f1',
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: '11px',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            설정하기 →
+          </Link>
+        </div>
+      )}
+
+
       {/* KPI row */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <KpiCard label="총 수집" value={(stats?.totalPapers ?? 0).toLocaleString()} caption="이번주" captionHighlight={`+${stats?.weeklyAdded ?? 0}`} hero />
@@ -189,7 +224,7 @@ function TotalPage({ agent }) {
         <div className={`flex items-center justify-between px-4 py-3 ${styles.cardHeader}`}>
           <div>
             <h2 className={`text-sm font-medium ${styles.sectionTitle}`}>최신 논문</h2>
-            <p className={`text-xs ${styles.sectionMeta}`}>날짜 기준 최신 {agent.collectCount || 5}개</p>
+            <p className={`text-xs ${styles.sectionMeta}`}>날짜 기준 최신 2개</p>
           </div>
           <span className={`text-xs ${styles.updatedAt}`}>{stats?.updatedAt ?? '-'}</span>
         </div>
@@ -207,7 +242,7 @@ function PopularPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchPapers({ limit: 20, sort: 'latest' }).then((data) => {
+    fetchPapers({ limit: 100, sort: 'latest' }).then((data) => {
       if (cancelled) return
       setPapers(Array.isArray(data) ? data : [])
       setIsLoading(false)
@@ -227,24 +262,11 @@ function PopularPage() {
     )
   }
 
-  const rising = [...papers].sort((a, b) => b.growth - a.growth).slice(0, 3)
   const periodMap = { '1일': 1, '3일': 3, '7일': 7 }
   const filteredNew = papers.filter((p) => p.daysAgo <= periodMap[newPeriod])
 
   return (
     <div className="animate-fade-up space-y-2">
-      {/* 급상승 */}
-      <section className={`rounded-xl ${styles.card}`}>
-        <div className={`flex items-center gap-2 px-4 py-3 ${styles.cardHeader}`}>
-          <TrendingUp size={14} className={styles.trendingIcon} />
-          <div>
-            <h2 className={`text-sm font-medium ${styles.sectionTitle}`}>이번주 급상승</h2>
-            <p className={`text-xs ${styles.sectionMeta}`}>7일 기준 수집 증가율 높은 논문 3개</p>
-          </div>
-        </div>
-        <PaperList papers={rising} />
-      </section>
-
       {/* 신규 수집 */}
       <section className={`rounded-xl ${styles.card}`}>
         <div className={`flex items-center justify-between px-4 py-3 ${styles.cardHeader}`}>
@@ -290,8 +312,8 @@ function ArchivePage() {
     link: b.link,
     journal: b.source,
     publishedAt: b.bookmarked_at ? b.bookmarked_at.slice(0, 10) : '방금 전',
-    authors: '',
-    citations: 0,
+    authors: b.authors || '',
+    citations: b.citations || 0,
     keywords: []
   }))
 
@@ -484,7 +506,7 @@ function PaperList({ papers, showSummary = false, summaryLength = 'medium' }) {
               <div className="min-w-0 flex-1">
                 <h3 className={`mb-0.5 text-sm font-medium leading-snug ${styles.paperTitle}`}>{paper.title}</h3>
                 {showSummary && (
-                  <p className={`mb-1 line-clamp-2 text-xs leading-relaxed ${styles.paperSummary}`}>{paper[field] || paper.summary}</p>
+                  <p className={`mb-2 text-xs leading-relaxed ${styles.paperSummary} whitespace-pre-wrap`}>{paper[field] || paper.summary}</p>
                 )}
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className={`text-xs ${styles.paperMeta}`}>

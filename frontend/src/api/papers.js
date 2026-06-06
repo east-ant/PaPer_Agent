@@ -21,6 +21,7 @@ export async function fetchPapers({ limit = 10, sort = 'latest' } = {}) {
       link:        p.link || '',
       keywords:    [],
       url:         p.link || '',
+      daysAgo:     p.daysAgo !== undefined ? p.daysAgo : 0,
     }))
 
     if (sort === 'trending') {

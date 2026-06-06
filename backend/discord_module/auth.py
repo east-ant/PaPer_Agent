@@ -63,21 +63,28 @@ class DiscordAuthService:
                 user_guild_ids = None
                 if access_token:
                     # 사용자 OAuth 토큰이 있는 경우 mutual guild만 노출
-                    user_guild_res = await client.get(
-                        f"{DiscordAuthService.DISCORD_API_URL}/users/@me/guilds",
-                        headers={"Authorization": f"Bearer {access_token}"},
-                    )
-                    user_guild_res.raise_for_status()
-                    user_guilds = user_guild_res.json()
-                    user_guild_ids = {str(g.get("id")) for g in user_guilds if g.get("id")}
+                    try:
+                        user_guild_res = await client.get(
+                            f"{DiscordAuthService.DISCORD_API_URL}/users/@me/guilds",
+                            headers={"Authorization": f"Bearer {access_token}"},
+                        )
+                        user_guild_res.raise_for_status()
+                        user_guilds = user_guild_res.json()
+                        user_guild_ids = {str(g.get("id")) for g in user_guilds if g.get("id")}
+                    except Exception as e:
+                        print(f"사용자 토큰으로 길드 조회 실패 (무시됨): {e}")
 
                 # 봇 길드
-                bot_guild_res = await client.get(
-                    f"{DiscordAuthService.DISCORD_API_URL}/users/@me/guilds",
-                    headers={"Authorization": f"Bot {settings.discord_bot_token}"},
-                )
-                bot_guild_res.raise_for_status()
-                bot_guilds = bot_guild_res.json()
+                try:
+                    bot_guild_res = await client.get(
+                        f"{DiscordAuthService.DISCORD_API_URL}/users/@me/guilds",
+                        headers={"Authorization": f"Bot {settings.discord_bot_token}"},
+                    )
+                    bot_guild_res.raise_for_status()
+                    bot_guilds = bot_guild_res.json()
+                except Exception as e:
+                    print(f"봇 토큰으로 길드 조회 실패: {e}")
+                    bot_guilds = []
 
                 channels = []
                 for guild in bot_guilds:
@@ -109,6 +116,7 @@ class DiscordAuthService:
                 where_clause = "user_email=%s" if "user_email" in columns else "user_id=%s"
                 selected_channel_id = None
                 selected_guild_id = None
+                ch_ids = []
                 conn = get_connection()
                 try:
                     cursor = conn.cursor()
@@ -128,13 +136,21 @@ class DiscordAuthService:
                         if row:
                             selected_channel_id = row[0] if len(row) >= 1 else None
                             selected_guild_id = row[1] if len(row) >= 2 else None
+                            
+                            if selected_channel_id:
+                                try:
+                                    parsed = json.loads(selected_channel_id)
+                                    ch_ids = parsed if isinstance(parsed, list) else [str(selected_channel_id)]
+                                except:
+                                    ch_ids = [str(selected_channel_id)]
                 finally:
                     conn.close()
 
                 return {
                     "ok": True,
                     "channels": channels,
-                    "selected_channel_id": selected_channel_id,
+                    "discord_channel_ids": ch_ids,
+                    "selected_channel_id": ch_ids[0] if ch_ids else None,
                     "selected_guild_id": selected_guild_id,
                 }
         except Exception as e:

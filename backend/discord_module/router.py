@@ -70,13 +70,27 @@ async def handle_interactions(request: Request):
                         message_data = data.get("message", {})
                         embeds = message_data.get("embeds", [])
                         # 0번은 Summary, 1번부터 실제 논문 Embed (notifications.py 로직)
-                        target_embed = embeds[embed_index + 1] if len(embeds) > embed_index + 1 else {}
+                        # 따라서 embed_index (1부터 시작) 자체가 올바른 타겟 인덱스임
+                        target_embed = embeds[embed_index] if len(embeds) > embed_index else {}
                         
                         raw_title = target_embed.get("title", "")
                         import re
                         title = re.sub(r'^\d+\.\s*', '', raw_title)
                         link = target_embed.get("url", "")
                         summary = target_embed.get("description", "")
+                        
+                        authors = ""
+                        citations = 0
+                        for field in target_embed.get("fields", []):
+                            if field.get("name") == "저자":
+                                authors = field.get("value", "")
+                            elif field.get("name") == "인용 수":
+                                citations_str = field.get("value", "")
+                                import re
+                                match = re.search(r'\d+', citations_str)
+                                if match:
+                                    citations = int(match.group())
+                                
                         paper_id = link.split("/")[-1] if link else title
                         
                     except ValueError:
@@ -125,7 +139,9 @@ async def handle_interactions(request: Request):
                     "title": title if title and title.strip() else "제목 없음",
                     "summary": summary if summary else "",
                     "link": link if link else "",
-                    "source": "discord_bot"
+                    "source": "discord_bot",
+                    "authors": authors if 'authors' in locals() else "",
+                    "citations": citations if 'citations' in locals() else 0
                 })
                 
                 if result.get("ok"):

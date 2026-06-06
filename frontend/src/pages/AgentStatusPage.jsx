@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAgentStore } from '../store/agentStore'
 import { getAgentStatus } from '../utils/agentStatus'
+import { runImmediateCollection } from '../api/agent'
 import { ArrowRight } from 'lucide-react'
 import styles from './AgentStatusPage.module.css'
 
@@ -26,22 +27,58 @@ function formatLastCollected(timestamp) {
 
 const STATUS_CFG = {
   unset:  { label: '미설정',   text: 'var(--status-neutral)', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)' },
-  not_connected: { label: '연결 필요', text: 'var(--status-neutral)', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)' }, // # 알림 미연결 상태를 별도 표시
+  not_connected: { label: '연결 필요', text: 'var(--status-neutral)', dot: 'var(--status-neutral-dot)', bg: 'var(--status-neutral-bg)' },
   active: { label: '활성화',   text: 'var(--status-active)',  dot: 'var(--status-active-dot)',  bg: 'var(--status-active-bg)' },
   paused: { label: '일시정지', text: 'var(--status-error)',   dot: 'var(--status-error-dot)',   bg: 'var(--status-error-bg)' },
 }
 
 export default function AgentStatusPage() {
-  const { agent, loadAgent, pauseAgent, resumeAgent } = useAgentStore()
+  const { agent, loadAgent, pauseAgent, resumeAgent, getDiscordChannels } = useAgentStore()
   const [toggleLoading, setToggleLoading] = useState(false)
   const [toggleError, setToggleError] = useState('')
+  const [runNowLoading, setRunNowLoading] = useState(false)
+  const [runNowMessage, setRunNowMessage] = useState('')
+  const [discordChannels, setDiscordChannels] = useState([])
+
   const status = getAgentStatus(agent)
   const cfg = STATUS_CFG[status]
 
   const hasDiscord = agent.notifications?.discord?.connected ?? false
-  const hasSlack   = agent.notifications?.slack?.connected ?? false
   const hasEmail   = agent.notifications?.email?.connected ?? false
-  const hasNotification = hasDiscord || hasSlack || hasEmail
+  const hasNotification = hasDiscord || hasEmail
+
+  useEffect(() => {
+    async function load() {
+      // 컴포넌트 마운트 시 최신 에이전트 설정(이메일, 디스코드 채널 등) 강제 업데이트
+      await loadAgent()
+      if (hasDiscord) {
+        const result = await getDiscordChannels()
+        if (result?.ok && result.channels) {
+          setDiscordChannels(result.channels)
+        }
+      }
+    }
+    load()
+  }, [hasDiscord, getDiscordChannels, loadAgent])
+
+  async function handleRunNow() {
+    if (runNowLoading) return
+    setRunNowLoading(true)
+    setRunNowMessage('')
+    try {
+      const res = await runImmediateCollection()
+      if (res?.ok) {
+        setRunNowMessage('🚀 즉시 수집 및 발송이 시작되었습니다. (채널 확인)')
+      } else {
+        setRunNowMessage(`❌ 실행 실패: ${res?.message || '알 수 없는 오류'}`)
+      }
+    } catch (error) {
+      setRunNowMessage(`❌ 오류 발생: ${error.message}`)
+    } finally {
+      setRunNowLoading(false)
+      setTimeout(() => setRunNowMessage(''), 5000)
+    }
+  }
 
   async function handleToggleActive() {
     if (toggleLoading) return
@@ -56,7 +93,6 @@ export default function AgentStatusPage() {
         return
       }
 
-      // 서버 기준 상태로 재동기화
       await loadAgent()
     } catch (error) {
       setToggleError(`상태 변경 중 오류: ${error.message}`)
@@ -94,7 +130,7 @@ export default function AgentStatusPage() {
           <div className="mb-3 flex items-center justify-between">
             <span className={`text-xs ${styles.cardHeaderLabel}`}>현재 상태</span>
             <div className="flex items-center gap-2">
-              {status !== 'unset' && status !== 'not_connected' && ( // # 미연결 상태에서는 일시정지/재개 대신 연결 유도만 표시
+              {status !== 'unset' && status !== 'not_connected' && (
                 <button
                   type="button"
                   onClick={handleToggleActive}
@@ -111,7 +147,7 @@ export default function AgentStatusPage() {
                 to="/agent"
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${styles.editBtn}`}
               >
-                {status === 'not_connected' ? '연결하기' : '설정 수정'} {/* # 연결 안 된 경우 바로 연결 화면으로 안내 */}
+                {status === 'not_connected' ? '연결하기' : '설정 수정'}
               </Link>
             </div>
           </div>
@@ -133,8 +169,7 @@ export default function AgentStatusPage() {
             <p className={`mt-2 text-xs ${styles.statusDesc}`}>{toggleError}</p>
           )}
 
-          {/* 일시정지 상태: 해결 경로 CTA */}
-          {(status === 'paused' || status === 'not_connected') && ( // # 미연결/일시정지 모두 안내 박스 사용
+          {(status === 'paused' || status === 'not_connected') && (
             <div className={`mt-3 rounded-lg p-3 ${styles.pausedBox}`}>
               <p className={`mb-2 text-xs ${styles.pausedBoxDesc}`}>
                 {!hasNotification
@@ -145,7 +180,7 @@ export default function AgentStatusPage() {
                 to="/agent"
                 className={`inline-flex items-center gap-1 text-xs font-medium ${styles.pausedBoxLink}`}
               >
-                {status === 'not_connected' ? '연결하러 가기' : '설정 수정하기'} <ArrowRight size={11} strokeWidth={2} /> {/* # 미연결 상태용 CTA */}
+                {status === 'not_connected' ? '연결하러 가기' : '설정 수정하기'} <ArrowRight size={11} strokeWidth={2} />
               </Link>
             </div>
           )}
@@ -172,12 +207,26 @@ export default function AgentStatusPage() {
         {/* 알림 채널 상태 */}
         {status !== 'unset' && (
           <div className={`overflow-hidden rounded-xl ${styles.card}`}>
-            <div className={`px-4 py-3 ${styles.sectionHeader}`}>
+            <div className={`flex items-center justify-between px-4 py-3 ${styles.sectionHeader}`}>
               <h2 className="text-sm font-medium">알림 채널</h2>
+              {hasNotification && (
+                <button
+                  type="button"
+                  onClick={handleRunNow}
+                  disabled={runNowLoading}
+                  className="rounded-lg bg-indigo-50 px-3 py-1.5 text-[11px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100 disabled:opacity-50"
+                >
+                  {runNowLoading ? '수집 발송 중...' : '즉시 수집 발송'}
+                </button>
+              )}
             </div>
+            {runNowMessage && (
+              <div className="bg-indigo-50/50 px-4 py-2 text-xs font-medium text-indigo-700">
+                {runNowMessage}
+              </div>
+            )}
             {[
               { label: 'Discord', active: hasDiscord },
-              { label: 'Slack',   active: hasSlack },
               { label: '이메일',  active: hasEmail },
             ].map(({ label, active }, i) => (
               <div
@@ -194,12 +243,23 @@ export default function AgentStatusPage() {
                   </span>
                 </div>
                 {label === 'Discord' && active && agent.notifications?.discord?.channel_ids?.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {Array.isArray(agent.notifications?.discord?.channel_ids) && agent.notifications.discord.channel_ids.map(id => (
-                      <span key={id} className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${styles.channelTag}`}>
-                        #{id}
-                      </span>
-                    ))}
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {Array.isArray(agent.notifications?.discord?.channel_ids) && agent.notifications.discord.channel_ids.map(id => {
+                      const channelInfo = discordChannels.find(c => String(c.channel_id) === String(id))
+                      const displayLabel = channelInfo ? `${channelInfo.guild_name} / #${channelInfo.channel_name}` : `#${id}`
+                      return (
+                        <span key={id} className={`self-start rounded px-2 py-1 text-[11px] font-medium ${styles.channelTag}`}>
+                          {displayLabel}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+                {label === '이메일' && active && agent.notifications?.email?.address && (
+                  <div className="mt-2 flex">
+                    <span className={`rounded px-2 py-1 text-[11px] font-medium ${styles.channelTag}`}>
+                      {agent.notifications.email.address}
+                    </span>
                   </div>
                 )}
               </div>
@@ -210,3 +270,4 @@ export default function AgentStatusPage() {
     </main>
   )
 }
+

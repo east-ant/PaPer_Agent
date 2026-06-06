@@ -117,7 +117,7 @@ class StorageBoxService:
             
             cursor.execute("""
                 SELECT 
-                    id, paper_id, title, summary, link, source, bookmarked_at AS created_at
+                    id, paper_id, title, summary, link, source, paper_data, bookmarked_at AS created_at
                 FROM bookmarks
                 WHERE user_email = %s
                 ORDER BY bookmarked_at DESC
@@ -128,6 +128,16 @@ class StorageBoxService:
             
             results = []
             for row in rows:
+                data_dict = {}
+                try:
+                    if row.get("paper_data"):
+                        data_dict = json.loads(row["paper_data"])
+                except:
+                    pass
+                
+                authors = data_dict.get("authors", "")
+                citations = data_dict.get("citations", 0) or data_dict.get("citationCount", 0)
+                
                 results.append({
                     "id": row["id"],
                     "paper_id": row.get("paper_id", ""),
@@ -135,6 +145,8 @@ class StorageBoxService:
                     "summary": row.get("summary") or "",
                     "link": row.get("link") or "",
                     "source": row.get("source") or "unknown",
+                    "authors": authors,
+                    "citations": citations,
                     "bookmarked_at": str(row.get("created_at", "")),
                 })
             

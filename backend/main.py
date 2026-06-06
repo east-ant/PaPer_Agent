@@ -94,9 +94,9 @@ def search(body: SearchRequest, authorization: Optional[str] = Header(None)):
 
     papers = []
     papers += arxiv_search(body.keyword, body.limit)
-    papers += crossref_search(body.keyword, body.limit)
+    # papers += crossref_search(body.keyword, body.limit)
     papers += semantic_search(body.keyword, settings.semantic_scholar_api_key, body.limit)
-    papers += core_search(body.keyword, settings.core_api_key, body.limit)
+    # papers += core_search(body.keyword, settings.core_api_key, body.limit)
 
     papers = remove_duplicates(papers)
     papers = sort_papers_by_recency(papers)
@@ -178,9 +178,9 @@ def collect(keyword: str, max_results: int = 10, authorization: Optional[str] = 
 
     papers = []
     papers += arxiv_search(keyword, max_results)
-    papers += crossref_search(keyword, max_results)
+    # papers += crossref_search(keyword, max_results)
     papers += semantic_search(keyword, settings.semantic_scholar_api_key, max_results)
-    papers += core_search(keyword, settings.core_api_key, max_results)
+    # papers += core_search(keyword, settings.core_api_key, max_results)
 
     papers = remove_duplicates(papers)
     papers = sort_papers_by_recency(papers)

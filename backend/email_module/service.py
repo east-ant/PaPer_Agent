@@ -224,7 +224,10 @@ def send_papers_email(to_email: str, papers: List[dict], user_email: str = None)
     for i, p in enumerate(papers[:10], 1):
         paper_id = p.get("id") or p.get("arxiv_id") or p.get("paperId", "")
         title = p.get("title", "제목 없음")
-        summary = p.get("summary") or p.get("abstract", "")
+        
+        # 한국어 초록 또는 본문 요약을 우선적으로 사용
+        summary = p.get("body_summary") or p.get("abstract_ko") or p.get("summary") or p.get("abstract", "")
+        
         link = p.get("link") or p.get("url", "#")
         authors = p.get("authors", "")
         if isinstance(authors, list):
@@ -234,7 +237,9 @@ def send_papers_email(to_email: str, papers: List[dict], user_email: str = None)
         
         import urllib.parse
         encoded_title = urllib.parse.quote(title)
-        bookmark_link = f"{frontend_url}/bookmark?id={paper_id}&title={encoded_title}&link={urllib.parse.quote(link)}&source={urllib.parse.quote(source)}"
+        encoded_authors = urllib.parse.quote(authors)
+        citations = p.get("citationCount") or p.get("citations") or 0
+        bookmark_link = f"{frontend_url}/bookmark?id={paper_id}&title={encoded_title}&summary={urllib.parse.quote(summary)}&link={urllib.parse.quote(link)}&source={urllib.parse.quote(source)}&authors={encoded_authors}&citations={citations}"
 
         papers_html += f"""
         <div style="margin-bottom: 24px; padding: 20px; background: white; border-radius: 8px; border: 1px solid #e5e7eb;">
@@ -242,7 +247,7 @@ def send_papers_email(to_email: str, papers: List[dict], user_email: str = None)
             <a href="{link}" style="color: #4f46e5; text-decoration: none;">{i}. {title}</a>
           </h3>
           <p style="margin: 0 0 8px; font-size: 12px; color: #6b7280;">{authors} · {published} · {source}</p>
-          <p style="margin: 0 0 16px; font-size: 13px; color: #374151; line-height: 1.6;">{summary[:300]}{"..." if len(summary) > 300 else ""}</p>
+          <p style="margin: 0 0 16px; font-size: 13px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{summary}</p>
           <a href="{bookmark_link}" style="display: inline-block; padding: 8px 16px; background-color: #f3f4f6; color: #374151; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid #d1d5db;">🔖 북마크 저장</a>
         </div>
         """

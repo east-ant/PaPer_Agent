@@ -414,7 +414,9 @@ def _init_db():
             summary TEXT,
             category VARCHAR(100),
             published DATETIME,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            authors TEXT,
+            citations INT DEFAULT 0
         )
     """)
     conn.commit()
@@ -437,9 +439,16 @@ def _save_paper_to_db(paper: dict, extracted_text: str):
         published_value = None
 
     try:
+        authors_val = paper.get("authors")
+        if isinstance(authors_val, list):
+            authors_str = ", ".join(authors_val[:3])
+        else:
+            authors_str = str(authors_val or "")
+        citations_val = paper.get("citationCount") or paper.get("citations") or 0
+
         cursor.execute("""
-            INSERT IGNORE INTO papers (arxiv_id, title, abstract, summary, category, published)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT IGNORE INTO papers (arxiv_id, title, abstract, summary, category, published, authors, citations)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             str(paper_id),
             _title_to_text(paper.get("title"))[:500],
@@ -447,6 +456,8 @@ def _save_paper_to_db(paper: dict, extracted_text: str):
             extracted_text[:5000],
             str(category)[:100] if category else None,
             published_value,
+            authors_str,
+            citations_val
         ))
         conn.commit()
         return True
@@ -869,13 +880,27 @@ def semantic_search(query, api_key, max_results):
     params = urllib.parse.urlencode({
         "query": query,
         "limit": max_results,
-        "fields": "title,abstract,year,authors,url,fieldsOfStudy,s2FieldsOfStudy,venue,journal,publicationTypes,citationCount,influentialCitationCount,openAccessPdf,externalIds",
+        "fields": "title,abstract,year,publicationDate,authors,url,fieldsOfStudy,s2FieldsOfStudy,venue,journal,publicationTypes,citationCount,influentialCitationCount,openAccessPdf,externalIds",
     })
     headers = {"x-api-key": api_key} if api_key and "your_" not in api_key else {}
     request = urllib.request.Request(f"{url}?{params}", headers=headers)
+    
+    data = None
     try:
-        with urllib.request.urlopen(request) as response:
-            data = json.loads(response.read())
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(request, timeout=20) as response:
+                    data = json.loads(response.read())
+                break
+            except urllib.error.HTTPError as error:
+                if error.code in (429, 503) and attempt < 2:
+                    import time
+                    time.sleep(3.0 * (attempt + 1))
+                    continue
+                raise
+        
+        if not data:
+            return []
 
         results = []
         for item in data.get("data", []):
@@ -895,7 +920,7 @@ def semantic_search(query, api_key, max_results):
                 "source": "Semantic Scholar",
                 "title": item.get("title"),
                 "authors": [author.get("name") for author in item.get("authors", [])],
-                "published": str(item.get("year", "")),
+                "published": item.get("publicationDate") or item.get("year") or "",
                 "link": item.get("url"),
                 "paperId": item.get("paperId"),
                 "abstract": _normalize_abstract_text(item.get("abstract")),

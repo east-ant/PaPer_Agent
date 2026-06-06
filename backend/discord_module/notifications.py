@@ -281,21 +281,34 @@ class DiscordNotificationService:
             authors_str = str(authors)[:200]
         
         summary_to_show = paper.get("abstract_ko") or paper.get("summary") or paper.get("abstract", "요약 없음")
-        summary = summary_to_show[:300]
+        # Discord Embed description 최대 길이는 4096자이므로 4000자로 여유 있게 자름
+        summary = summary_to_show[:4000]
         
         link = paper.get("link", "") or paper.get("url", "")
         source = paper.get("source", "Unknown")
         published = paper.get("published") or paper.get("year") or paper.get("published_date") or "Unknown"
         
+        citations = paper.get("citationCount") or paper.get("citations") or 0
+        
         embed = {
             "title": f"{index}. {title}",
-            "description": summary + ("..." if len(summary_to_show) >= 300 else ""),
+            "description": summary + ("..." if len(summary_to_show) > 4000 else ""),
             "url": link if link else None,
             "color": 0x6366f1,
             "fields": [
                 {
                     "name": "저자",
                     "value": authors_str if authors_str else "저자 정보 없음",
+                    "inline": True
+                },
+                {
+                    "name": "인용 수",
+                    "value": f"{citations}회" if citations else "0회",
+                    "inline": True
+                },
+                {
+                    "name": "\u200b",
+                    "value": "\u200b",
                     "inline": False
                 },
                 {

@@ -20,6 +20,8 @@ class BookmarkRequest(BaseModel):
     summary: str = ""
     link: str = ""
     source: str = "unknown"
+    authors: str = ""
+    citations: int = 0
 
 # Phase 6: 논문 저장
 @router.post("/bookmark")

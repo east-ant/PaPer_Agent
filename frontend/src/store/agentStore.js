@@ -10,7 +10,7 @@ const initialAgent = {
   collectCount: 5,
   notifications: {
     discord: { connected: false, lastTestStatus: null, lastTestAt: null },
-    slack:   { connected: false, lastTestStatus: null, lastTestAt: null },
+    // slack:   { connected: false, lastTestStatus: null, lastTestAt: null },
     email:   { connected: false, lastTestStatus: null, lastTestAt: null },
   },
   frequency: 'daily',
@@ -53,8 +53,8 @@ export const useAgentStore = create(
         let result
         if (channel === 'discord') {
           result = await agentAPI.connectDiscord()
-        } else if (channel === 'slack') {
-          result = await agentAPI.connectSlack()
+        // } else if (channel === 'slack') {
+        //   result = await agentAPI.connectSlack()
         } else {
           result = await agentAPI.connectChannel(channel)
         }
@@ -71,7 +71,7 @@ export const useAgentStore = create(
             }
             const hasNotification =
               updatedNotifications.discord?.connected ||
-              updatedNotifications.slack?.connected ||
+              // updatedNotifications.slack?.connected ||
               updatedNotifications.email?.connected
             return {
               agent: {
@@ -92,17 +92,17 @@ export const useAgentStore = create(
         return await agentAPI.getDiscordChannels()
       },
       // 5/22일 #slack 추가 (Slack 채널 목록 조회)
-      getSlackChannels: async () => {
-        return await agentAPI.getSlackChannels() // #slack 추가 (Slack 채널 목록 조회)
-      },
+      // getSlackChannels: async () => {
+      //   return await agentAPI.getSlackChannels() // #slack 추가 (Slack 채널 목록 조회)
+      // },
 
       selectDiscordChannel: async ({ guildId, channelId }) => {
         return await agentAPI.selectDiscordChannel({ guildId, channelId })
       },
       // 5/22일 #slack 추가 (Slack 채널 선택)
-      selectSlackChannel: async ({ workspaceId, channelId }) => {
-        return await agentAPI.selectSlackChannel({ workspaceId, channelId }) // #slack 추가 (Slack 채널 저장)
-      },
+      // selectSlackChannel: async ({ workspaceId, channelId }) => {
+      //   return await agentAPI.selectSlackChannel({ workspaceId, channelId }) // #slack 추가 (Slack 채널 저장)
+      // },
 
       disconnectNotification: async (channel) => {
         const result = await agentAPI.disconnectChannel(channel)
@@ -118,7 +118,7 @@ export const useAgentStore = create(
             }
             const hasNotification =
               updatedNotifications.discord?.connected ||
-              updatedNotifications.slack?.connected ||
+              // updatedNotifications.slack?.connected ||
               updatedNotifications.email?.connected
             return {
               agent: {
@@ -137,8 +137,8 @@ export const useAgentStore = create(
         let result
         if (channel === 'discord') {
           result = await agentAPI.testDiscord()
-        } else if (channel === 'slack') {
-          result = await agentAPI.testSlack() 
+        // } else if (channel === 'slack') {
+        //   result = await agentAPI.testSlack()
         } else {
           result = await agentAPI.testChannel(channel)
         }
@@ -203,7 +203,7 @@ export const useAgentStore = create(
               isActive: !!result.is_active,
               notifications: {
                 discord: result.notifications?.discord || initialAgent.notifications.discord,
-                slack: result.notifications?.slack || initialAgent.notifications.slack,
+                // slack: result.notifications?.slack || initialAgent.notifications.slack,
                 email: result.notifications?.email || initialAgent.notifications.email,
               },
             },
@@ -250,10 +250,10 @@ export const useAgentStore = create(
               ...current.agent.notifications.discord,
               ...persisted.agent?.notifications?.discord,
             },
-            slack: {
-              ...current.agent.notifications.slack,
-              ...persisted.agent?.notifications?.slack,
-            },
+            // slack: {
+            //   ...current.agent.notifications.slack,
+            //   ...persisted.agent?.notifications?.slack,
+            // },
             email: {
               ...current.agent.notifications.email,
               ...persisted.agent?.notifications?.email,

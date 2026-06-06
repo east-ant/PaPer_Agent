@@ -16,6 +16,9 @@ export default function BookmarkPage() {
       const title = searchParams.get('title')
       const link = searchParams.get('link')
       const source = searchParams.get('source') || 'email'
+      const summary = searchParams.get('summary') || ''
+      const authors = searchParams.get('authors') || ''
+      const citations = parseInt(searchParams.get('citations') || '0', 10)
 
       if (!id) {
         setStatus('error')
@@ -42,8 +45,11 @@ export default function BookmarkPage() {
           body: JSON.stringify({
             paper_id: id,
             title: title || '제목 없음',
+            summary: summary,
             link: link || '',
-            source: source
+            source: source,
+            authors: authors,
+            citations: isNaN(citations) ? 0 : citations
           })
         })
         const data = await res.json()

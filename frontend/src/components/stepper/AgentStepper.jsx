@@ -10,9 +10,9 @@ const steps = ['키워드', '소스', '표시항목', '알림', '요약']
 
 const ALL_SOURCES = [
   { id: 'arxiv', label: 'arXiv', region: '해외', desc: '출판 전에 미리 공개되는 논문을 모아두는 곳이에요. AI·수학·과학 분야의 최신 연구를 가장 빠르게 받아볼 수 있어요.' },
-  { id: 'crossref', label: 'Crossref', region: '해외', desc: '학술지나 학회에 정식으로 실린 논문들을 모아둔 곳이에요. 검증된 연구 결과물을 찾을 때 좋아요.' },
+  // { id: 'crossref', label: 'Crossref', region: '해외', desc: '학술지나 학회에 정식으로 실린 논문들을 모아둔 곳이에요. 검증된 연구 결과물을 찾을 때 좋아요.' },
   { id: 'semantic', label: 'Semantic Scholar', region: '해외', desc: '논문끼리 얼마나 많이 인용됐는지 분석해서 보여줘요. 주목받는 연구를 찾을 때 유용해요.' },
-  { id: 'core', label: 'CORE', region: '해외', desc: '무료로 전문을 읽을 수 있는 논문만 모아둔 곳이에요. 로그인 없이 바로 읽을 수 있는 논문들이에요.' },
+  // { id: 'core', label: 'CORE', region: '해외', desc: '무료로 전문을 읽을 수 있는 논문만 모아둔 곳이에요. 로그인 없이 바로 읽을 수 있는 논문들이에요.' },
 ]
 
 const SUGGESTED_KEYWORDS = [
@@ -38,8 +38,8 @@ export default function AgentStepper() {
     saveAgent,
     getDiscordChannels, // #기존 디스코드
     selectDiscordChannel, // #기존 디스코드 
-    getSlackChannels, // #slack 추가 (Slack 채널 목록 로드) 5/22
-    selectSlackChannel, // #slack 추가 (Slack 채널 저장) 5/22
+    // getSlackChannels, // #slack 추가 (Slack 채널 목록 로드) 5/22
+    // selectSlackChannel, // #slack 추가 (Slack 채널 저장) 5/22
   } = useAgentStore()
   const [step, setStep] = useState(1)
   const [keywordInput, setKeywordInput] = useState('')
@@ -48,9 +48,9 @@ export default function AgentStepper() {
   const [loading, setLoading] = useState(false)
   const [discordChannels, setDiscordChannels] = useState([]) // #추가
   const [selectedDiscordChannels, setSelectedDiscordChannels] = useState([]) // #추가
-  const [slackChannels, setSlackChannels] = useState([]) // #slack 추가 (Slack 채널 목록)
-  const [selectedSlackChannel, setSelectedSlackChannel] = useState('') // #slack 추가 (Slack 단일 선택)
-  const [selectedSlackWorkspaceId, setSelectedSlackWorkspaceId] = useState('') // #slack 추가 (Slack 워크스페이스 식별)
+  // const [slackChannels, setSlackChannels] = useState([]) // #slack 추가 (Slack 채널 목록)
+  // const [selectedSlackChannel, setSelectedSlackChannel] = useState('') // #slack 추가 (Slack 단일 선택)
+  // const [selectedSlackWorkspaceId, setSelectedSlackWorkspaceId] = useState('') // #slack 추가 (Slack 워크스페이스 식별)
   const [savingChannel, setSavingChannel] = useState(false) // #추가
   const [channelAction, setChannelAction] = useState({ type: null, id: null }) // #추가
 
@@ -61,12 +61,12 @@ export default function AgentStepper() {
     sources:  [...(agent.sources ?? [])],
     notifications: {
       discord: { ...(agent.notifications?.discord ?? {}) },
-      slack:   { ...(agent.notifications?.slack ?? {}) },
+      // slack:   { ...(agent.notifications?.slack ?? {}) },
       email:   { ...(agent.notifications?.email ?? {}) },
     },
   })
 
-  const hasNotification = agent.notifications?.discord?.connected || agent.notifications?.slack?.connected || agent.notifications?.email?.connected
+  const hasNotification = agent.notifications?.discord?.connected || /*agent.notifications?.slack?.connected ||*/ agent.notifications?.email?.connected
 
   useEffect(() => {
     async function loadChannels() {
@@ -85,21 +85,21 @@ export default function AgentStepper() {
         }
       }
 
-      if (agent.notifications?.slack?.connected) {
-        const result = await getSlackChannels() // #slack 추가 (Slack 연결 시 채널 목록 로드)
-        if (result?.ok) {
-          const channels = Array.isArray(result.channels) ? result.channels : []
-          setSlackChannels(channels) // #slack 추가 (Slack 채널 목록 저장)
-          const selected = result.selected || {}
-          if (selected.channel_id) {
-            setSelectedSlackChannel(String(selected.channel_id)) // #slack 추가 (선택된 Slack 채널 저장)
-            setSelectedSlackWorkspaceId(String(selected.workspace_id || '')) // #slack 추가 (선택된 Slack 워크스페이스 저장)
-          }
-        }
-      }
+      // if (agent.notifications?.slack?.connected) {
+      //   const result = await getSlackChannels() // #slack 추가 (Slack 연결 시 채널 목록 로드)
+      //   if (result?.ok) {
+      //     const channels = Array.isArray(result.channels) ? result.channels : []
+      //     setSlackChannels(channels) // #slack 추가 (Slack 채널 목록 저장)
+      //     const selected = result.selected || {}
+      //     if (selected.channel_id) {
+      //       setSelectedSlackChannel(String(selected.channel_id)) // #slack 추가 (선택된 Slack 채널 저장)
+      //       setSelectedSlackWorkspaceId(String(selected.workspace_id || '')) // #slack 추가 (선택된 Slack 워크스페이스 저장)
+      //     }
+      //   }
+      // }
     }
     loadChannels()
-  }, [step, agent.notifications?.discord?.connected, agent.notifications?.slack?.connected, getDiscordChannels, getSlackChannels]) // #추가
+  }, [step, agent.notifications?.discord?.connected, /*agent.notifications?.slack?.connected,*/ getDiscordChannels/*, getSlackChannels*/]) // #추가
 
   // summaryLengthLabel 정의
   const summaryLengthLabel = useMemo(() => {
@@ -184,7 +184,7 @@ export default function AgentStepper() {
       const result = await connectNotification(channel)
       if (!result || !result.ok) {
         const detail = result?.error ? `: ${result.error}` : '' // #추가
-        const label = channel === 'slack' ? 'Slack' : channel === 'discord' ? 'Discord' : channel
+        const label = /*channel === 'slack' ? 'Slack' :*/ channel === 'discord' ? 'Discord' : channel
         setError((result?.message || `${label} 연결 실패`) + detail)
       }
     } catch (err) {
@@ -205,10 +205,10 @@ export default function AgentStepper() {
         setError('채널을 먼저 선택해주세요.')
         return
       }
-      if (channel === 'slack' && !selectedSlackChannel) { // #slack 추가 (Slack 채널을 먼저 선택해야 테스트 가능)
-        setError('Slack 채널을 먼저 선택해주세요.')
-        return
-      }
+      // if (channel === 'slack' && !selectedSlackChannel) { // #slack 추가 (Slack 채널을 먼저 선택해야 테스트 가능)
+      //   setError('Slack 채널을 먼저 선택해주세요.')
+      //   return
+      // }
       // const result = await testNotification(channel) // 기존
       let result = await testNotification(channel)
       if (!result || !result.ok) {
@@ -225,15 +225,15 @@ export default function AgentStepper() {
           }
         }
 
-        if (channel === 'slack' && (message.includes('채널') || message.includes('선택'))) { // #slack 추가 (선택 채널이 없을 때 재연결 유도)
-          const reconnect = await connectNotification('slack')
-          if (reconnect?.ok || reconnect?.connected) {
-            result = await testNotification(channel)
-            if (result?.ok) {
-              return
-            }
-          }
-        }
+        // if (channel === 'slack' && (message.includes('채널') || message.includes('선택'))) { // #slack 추가 (선택 채널이 없을 때 재연결 유도)
+        //   const reconnect = await connectNotification('slack')
+        //   if (reconnect?.ok || reconnect?.connected) {
+        //     result = await testNotification(channel)
+        //     if (result?.ok) {
+        //       return
+        //     }
+        //   }
+        // }
 
         const detail = result?.error ? `: ${result.error}` : '' // #추가
         setError((result?.message || '테스트 발송 실패') + detail)
@@ -289,29 +289,29 @@ export default function AgentStepper() {
     }
   }
 
-  async function handleSlackChannelChange(id) {
-    const channelId = String(id)
-    setError('')
-
-    const selected = slackChannels.find((item) => String(item.channel_id) === channelId)
-    if (!selected) return
-
-    setSelectedSlackChannel(channelId) // #slack 추가 (Slack은 단일 채널만 저장)
-    setSelectedSlackWorkspaceId(String(selected.workspace_id || '')) // #slack 추가 (워크스페이스 정보 저장)
-
-    setSavingChannel(true)
-    try {
-      const saveResult = await selectSlackChannel({
-        workspaceId: String(selected.workspace_id || ''),
-        channelId,
-      })
-      if (!saveResult?.ok) {
-        setError(saveResult?.message || 'Slack 채널 선택 저장 실패')
-      }
-    } finally {
-      setSavingChannel(false)
-    }
-  }
+  // async function handleSlackChannelChange(id) {
+  //   const channelId = String(id)
+  //   setError('')
+  //
+  //   const selected = slackChannels.find((item) => String(item.channel_id) === channelId)
+  //   if (!selected) return
+  //
+  //   setSelectedSlackChannel(channelId) // #slack 추가 (Slack은 단일 채널만 저장)
+  //   setSelectedSlackWorkspaceId(String(selected.workspace_id || '')) // #slack 추가 (워크스페이스 정보 저장)
+  //
+  //   setSavingChannel(true)
+  //   try {
+  //     const saveResult = await selectSlackChannel({
+  //       workspaceId: String(selected.workspace_id || ''),
+  //       channelId,
+  //     })
+  //     if (!saveResult?.ok) {
+  //       setError(saveResult?.message || 'Slack 채널 선택 저장 실패')
+  //     }
+  //   } finally {
+  //     setSavingChannel(false)
+  //   }
+  // }
 
 
   // 저장 핸들러
@@ -647,7 +647,7 @@ export default function AgentStepper() {
             <div className="mb-4 space-y-2">
               {[
                 { id: 'discord', label: 'Discord', desc: '서버 채널로 알림을 받습니다.' },
-                { id: 'slack',   label: 'Slack',   desc: '워크스페이스 채널로 알림을 받습니다.' },
+                // { id: 'slack',   label: 'Slack',   desc: '워크스페이스 채널로 알림을 받습니다.' },
                 { id: 'email',   label: '이메일',  desc: '가입한 이메일 주소로 알림을 받습니다.' },
               ].map(({ id, label, desc }) => {
                 const ch = agent.notifications?.[id] ?? { connected: false, lastTestStatus: null, lastTestAt: null }
@@ -686,7 +686,8 @@ export default function AgentStepper() {
                               )}
                             </div>
                         )}
-                        {id === 'slack' && ch.connected && ( // #slack 추가 (Slack 채널 목록 렌더링)
+                        {/* #slack 주석처리 (Slack 채널 목록 렌더링)
+                        {id === 'slack' && ch.connected && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {slackChannels.length === 0 ? (
                                 <p className="text-xs text-gray-500">Slack 채널을 불러오는 중이거나 채널이 없습니다.</p>
@@ -712,6 +713,7 @@ export default function AgentStepper() {
                               )}
                             </div>
                         )}
+                        */}
                         {ch.connected && ch.lastTestStatus === 'success' && (
                           <p className={`mt-1 text-xs font-medium ${styles.channelTestOk}`}>
                             ✓ 테스트 알림 전송됨
@@ -737,7 +739,7 @@ export default function AgentStepper() {
                         {ch.connected && (
                           <button
                             onClick={() => handleTest(id)}
-                            disabled={(channelAction.id === id && channelAction.type === 'test') || (id === 'discord' && selectedDiscordChannels.length === 0) || (id === 'slack' && !selectedSlackChannel)} // # slack 추가 (테스트 시 채널 선택 여부 확인)
+                            disabled={(channelAction.id === id && channelAction.type === 'test') || (id === 'discord' && selectedDiscordChannels.length === 0) /*|| (id === 'slack' && !selectedSlackChannel)*/} // # slack 주석처리
                             className={`text-xs font-medium underline transition-colors ${styles.testBtn} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             {(channelAction.id === id && channelAction.type === 'test') ? '전송 중...' : '테스트 알림 전송'} {/* #추가 */}
@@ -799,7 +801,7 @@ export default function AgentStepper() {
                   value:
                     [
                       agent.notifications?.discord?.connected && `Discord (${selectedDiscordChannels.length}개 채널)`,
-                      agent.notifications?.slack?.connected && `Slack (${selectedSlackWorkspaceId ? `${selectedSlackWorkspaceId} / ` : ''}${selectedSlackChannel ? `#${selectedSlackChannel}` : '연결됨'})`,
+                      // agent.notifications?.slack?.connected && `Slack (${selectedSlackWorkspaceId ? `${selectedSlackWorkspaceId} / ` : ''}${selectedSlackChannel ? `#${selectedSlackChannel}` : '연결됨'})`,
                       agent.notifications?.email?.connected && '이메일',
                     ].filter(Boolean).join(' · ') || '미연결',
                   edit: 4,

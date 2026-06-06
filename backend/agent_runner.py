@@ -213,20 +213,20 @@ class PaperAgentRunner:
     def _source_function(self, source: str) -> Callable[[str, int], list[dict]] | None:
         if source == "arxiv":
             return arxiv_search
-        if source == "crossref":
-            return crossref_search
+        # if source == "crossref":
+        #     return crossref_search
         if source == "semantic":
             return lambda term, limit: semantic_search(
                 term,
                 settings.semantic_scholar_api_key,
                 limit,
             )
-        if source == "core":
-            return lambda term, limit: core_search(
-                term,
-                settings.core_api_key,
-                limit,
-            )
+        # if source == "core":
+        #     return lambda term, limit: core_search(
+        #         term,
+        #         settings.core_api_key,
+        #         limit,
+        #     )
         return None
 
     def _rank_candidates(self, papers: list[dict]) -> list[dict]:
@@ -413,7 +413,7 @@ class PaperAgentRunner:
             key = SOURCE_ALIASES.get(str(source).strip().lower())
             if key and key not in normalized:
                 normalized.append(key)
-        return normalized or ["arxiv", "crossref", "semantic"]
+        return normalized or ["arxiv", "semantic"]
 
     def _keyword_tokens(self, keyword: str) -> list[str]:
         return [

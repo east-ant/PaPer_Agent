@@ -4,6 +4,7 @@ import { useAgentStore } from '../store/agentStore'
 import styles from './LoginPage.module.css'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://paper-agent-altv.onrender.com'
+const IS_LOCAL = API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1')
 
 export default function LoginPage() {
   const [view, setView]       = useState('login')   // 'login' | 'verify'
@@ -90,6 +91,50 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+
+      {/* 백엔드 환경 배지 */}
+      <div style={{
+        position: 'fixed',
+        top: '12px',
+        right: '14px',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '5px 10px',
+        borderRadius: '99px',
+        fontSize: '11px',
+        fontWeight: 600,
+        letterSpacing: '0.01em',
+        backdropFilter: 'blur(8px)',
+        border: IS_LOCAL
+          ? '1px solid rgba(52,211,153,0.35)'
+          : '1px solid rgba(99,102,241,0.35)',
+        background: IS_LOCAL
+          ? 'rgba(6,78,59,0.75)'
+          : 'rgba(30,27,75,0.75)',
+        color: IS_LOCAL ? '#6ee7b7' : '#a5b4fc',
+        boxShadow: IS_LOCAL
+          ? '0 0 12px rgba(52,211,153,0.2)'
+          : '0 0 12px rgba(99,102,241,0.2)',
+        userSelect: 'none',
+      }}>
+        <span style={{
+          display: 'inline-block',
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          background: IS_LOCAL ? '#34d399' : '#818cf8',
+          boxShadow: IS_LOCAL
+            ? '0 0 6px #34d399'
+            : '0 0 6px #818cf8',
+          flexShrink: 0,
+        }} />
+        <span>{IS_LOCAL ? '🖥 로컬 백엔드' : '☁ 외부 서버'}</span>
+        <span style={{ opacity: 0.6, fontSize: '10px', marginLeft: '2px' }}>
+          {API_BASE.replace('https://', '').replace('http://', '')}
+        </span>
+      </div>
 
       {/* Left — Brand panel */}
       <section className={`relative flex flex-col justify-between overflow-hidden p-10 lg:p-14 ${styles.brandPanel}`}>

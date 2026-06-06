@@ -89,7 +89,12 @@ async def run_immediate_collection(user_email, notification_id, keywords, source
         logger.info(f"🚀 [Background] 즉시 수집 시작 ({user_email})")
         
         # 논문 수집 (중복 필터링 포함)
-        papers = NoticeService.collect_papers(keywords, sources, collect_count, user_email=user_email)
+        papers = NoticeService.collect_papers(
+            keywords, sources, collect_count, 
+            user_email=user_email, 
+            language=language, 
+            summary_length=summary_length
+        )
         logger.info(f"📚 수집된 논문 수: {len(papers)}개")
         
         send_status = "pending"
@@ -204,6 +209,63 @@ def get_notification_setting(authorization: Optional[str] = Header(None)):
             "error": str(e),
             "message": "설정 조회 실패"
         }
+
+# 즉시 수집 및 발송 실행
+@router.post("/run-now")
+async def run_now_with_current_settings(
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    현재 저장된 설정으로 즉시 논문 수집 및 발송 실행
+    """
+    try:
+        user_email = get_email_from_token(authorization)
+        
+        # 저장된 설정 불러오기
+        result = NoticeService.get_notification_settings(user_email)
+        if not result.get("ok"):
+            return result
+        
+        if not result.get("keywords") or not result.get("sources"):
+            return {"ok": False, "message": "에이전트 설정(키워드, 소스)이 불완전합니다."}
+            
+        notification_id = None
+        
+        # DB에서 notification_settings id 가져오기 (get_notification_settings에는 알림 ID가 확실하게 없을 수도 있어서 직접 쿼리)
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM notification_settings WHERE user_email=%s LIMIT 1", (user_email,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            notification_id = row[0]
+            
+        if not notification_id:
+             return {"ok": False, "message": "알림 채널 설정이 존재하지 않습니다."}
+
+        # 즉시 수집+발송 백그라운드 태스크 등록
+        background_tasks.add_task(
+            run_immediate_collection,
+            user_email=user_email,
+            notification_id=notification_id,
+            keywords=result.get("keywords"),
+            sources=result.get("sources"),
+            collect_count=result.get("collect_count", 5),
+            language=result.get("language", "ko"),
+            summary_length=result.get("summary_length", "medium")
+        )
+        
+        return {
+            "ok": True,
+            "message": "즉시 수집 및 발송 작업이 백그라운드에서 시작되었습니다."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"ok": False, "error": str(e), "message": "실행 요청 실패"}
+
 
 # 이메일 테스트 알림 전송
 @router.post("/test/email")

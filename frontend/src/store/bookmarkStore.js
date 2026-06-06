@@ -57,7 +57,9 @@ export const useBookmarkStore = create(
               title: paper.title || '제목 없음',
               summary: paper.summary || paper.abstract || '',
               link: paper.link || paper.url || '',
-              source: paper.journal || paper.source || 'unknown'
+              source: paper.journal || paper.source || 'unknown',
+              authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : (paper.authors || ''),
+              citations: paper.citations || paper.citationCount || 0
             })
           })
 
