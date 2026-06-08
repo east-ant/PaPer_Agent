@@ -20,11 +20,29 @@ const SUGGESTED_KEYWORDS = [
   'Diffusion Model', 'Reinforcement Learning', 'NLP', 'GNN',
 ]
 
-// summaryLength별 미리보기 텍스트 (백엔드 실제 요약 반환 전 mock)
-const SUMMARY_PREVIEW = {
-  short: '트랜스포머의 어텐션 메커니즘이 자연어 처리 성능을 획기적으로 향상시킨 연구입니다.',
-  medium: '트랜스포머 기반 어텐션 메커니즘이 자연어 처리 성능을 기존 RNN 대비 크게 향상시켰습니다. 멀티헤드 어텐션과 포지셔널 인코딩을 결합해 병렬 처리 효율을 극대화했으며, GPT·BERT 등 대형 언어모델의 토대가 됩니다.',
-  full: '트랜스포머는 순환 신경망(RNN)의 한계를 극복하기 위해 제안된 구조로, 셀프-어텐션 메커니즘을 통해 입력 시퀀스 전체를 동시에 처리합니다. 멀티헤드 어텐션은 다양한 표현 공간에서 정보를 병렬로 집계하며, 포지셔널 인코딩으로 순서 정보를 보완합니다. 이 설계는 학습 병렬화를 가능하게 해 훈련 속도를 대폭 높였고, GPT·BERT·T5 등 후속 대형 언어모델의 표준 아키텍처로 자리잡았습니다. 번역·요약·질의응답 등 거의 모든 NLP 태스크에서 기존 SOTA를 경신하며 딥러닝 패러다임을 전환한 역작입니다.',
+// summaryLength별 미리보기 데이터 (백엔드 실제 요약 반환 전 mock)
+const PREVIEW_DATA = {
+  short: {
+    title: '1. GnnXemplar: Exemplars to Explanations - Natural Language Rules for Global GNN Interpretability',
+    meta: 'Burouj Armgaan, Eshank Jain, Harsh Pandey · 2025-09-22 · Semantic Scholar',
+    briefing: '안녕하세요! 이 논문은 GNN의 결정 과정을 해석하는 새로운 방법론을 제안하고 있어요. 연구의 초점이 GNN과 자연어 처리(NLP)인 만큼, 사용자님에게 매우 중요한 주제가 될 것입니다. 대규모 언어 모델을 활용하여 GNN의 예측을 보다 잘 이해하게 만드는 기술이니 흥미롭게 보실 것 같습니다.',
+    summary: '이 연구는 그래프 신경망(GNN)의 예측을 이해하는 데 있어 불투명한 결정 과정을 해결하기 위해 GnnXemplar라는 새로운 글로벌 설명자를 제안합니다. GnnXemplar는 인지 과학의 예시 이론에 영감을 받아, GNN 임베딩 공간에서 대표적인 노드를 찾아내고 이웃으로부터 유도한 자연어 규칙을 사용해 예측을 설명합니다. 실험 결과, GnnXemplar는 기존 방법보다 신뢰성, 확장성 및 인간 해석 가능성 면에서 우수성을 입증했습니다.',
+    critique: null,
+  },
+  medium: {
+    title: '1. All in One: Multi-Task Prompting for Graph Neural Networks',
+    meta: 'Xiangguo Sun, Hongtao Cheng, Jia Li · 2023-07-04 · Semantic Scholar',
+    briefing: '안녕하세요! 이 논문은 자연어 처리와 그래프 신경망의 개념을 성공적으로 연결하고 있어, 사용자님의 관심사와 잘 맞습니다. 특히, 멀티태스크 성능을 향상시키는 새로운 방법론을 제공하여 GNN 및 NLP 분야에서 큰 가치를 일으킬 것으로 보입니다.',
+    summary: '본 논문은 다양한 그래프 작업 간의 사전 훈련 모델 간의 간극을 메우는 문제를 연구합니다. 이를 위해 논문은 그래프 프롬프트와 언어 프롬프트의 형식을 통합하고, 다양한 그래프 응용을 위한 작업 공간을 재구성하며, 메타 학습을 도입하여 멀티태스크 프롬프트 초기화를 효율적으로 학습하는 방법론을 제안합니다. 실험 결과는 제안된 방법의 뛰어난 성능을 입증하였으며, 이는 그래프 모델의 멀티태스크 프롬프트 방법론을 제시하여 그래프 분류 작업에서 일반성을 개선하는 데 기여합니다.',
+    critique: '이 모델은 그래프 작업의 다양성을 충분히 고려하고 있지만, 특정 그래프 모델의 차원 제한성과 프롬프트의 일반화 가능성에 대한 의문이 남습니다. 또한, 다양한 그래프 작업을 포괄하는 더 구체적인 후속 연구 방향으로는 다양한 graph-level 및 edge-level 작업에 대한 세분화된 프롬프트 설계가 필요하며, 이를 통해 모델의 성능을 더욱 향상시킬 수 있을 것입니다.',
+  },
+  full: {
+    title: '1. MailoHLS: Multi-Adapter Structure-Aware Learning for Pareto-Driven HLS Pragma Optimization',
+    meta: 'Elena Vouvali, Dimosthenis Masouros, Aggelos Ferikoglou · 2026-06-05 · arXiv',
+    briefing: '안녕하세요! 오늘 소개할 논문은 LLM과 GNN을 통합한 MailoHLS라는 새로운 프레임워크에 대한 것입니다. 이 연구는 고급 합성(High-Level Synthesis, HLS) 최적화를 통해 하드웨어 설계를 향상시킬 수 있는 방법을 제시하고 있어, 사용자님의 관심사와 밀접하게 연결되어 있어요.',
+    summary: '이 논문에서는 FPGA 가속기 디자인의 성과(QoR: Quality of Result)를 향상시키기 위한 문제로, 적절한 HLS 프래그마(프로그래밍 지시어) 최적화 방법을 제안한다. 저자들은 LLM(대형 언어 모델)과 GNN(그래프 신경망)을 결합한 하이브리드 프레임워크 MailoHLS를 소개하며, 이는 구조적 의존성과 의미를 통합하여 설계 최적화를 가능하게 한다. MailoHLS는 proxy-ensemble 기반의 트레이닝 방법과 Pareto 최적화 기법을 도입하여 다양한 설계 목표에 대해 효과적인 결과를 도출한다. 실험을 통해 MailoHLS는 기존의 최적화 기법과 비교해 최대 12.42배의 속도 향상을 달성하며, 전체적으로 높은 수준의 설계 품질을 제공하는 것으로 나타났다. 이는 HLS에서 의미론적 및 구조적 추론을 결합함으로써 가능했던 성과이다.',
+    critique: 'MailoHLS는 모델의 구조적 의존성을 효과적으로 Capturing했지만, 제한적 고유 모델 구조적 결합으로 인해 일부 최적화 지표에 대해서는 일반화의 한계가 있을 수 있다. 또한, GNN의 확장 가능성이 검증되지 않았으며, 다양한 HLS 도구에 대한 적용성을 평가하는 후속 연구가 필요하다. 미래의 연구는 MailoHLS를 더욱 다양한 애플리케이션 및 툴체인에 적용하여 실제 하드웨어 디자인 프로세스에서의 유용성을 탐구해야 할 것이다.',
+  }
 }
 
 export default function AgentStepper() {
@@ -58,11 +76,11 @@ export default function AgentStepper() {
   const snapshot = useRef({
     ...agent,
     keywords: [...(agent.keywords ?? [])],
-    sources:  [...(agent.sources ?? [])],
+    sources: [...(agent.sources ?? [])],
     notifications: {
       discord: { ...(agent.notifications?.discord ?? {}) },
       // slack:   { ...(agent.notifications?.slack ?? {}) },
-      email:   { ...(agent.notifications?.email ?? {}) },
+      email: { ...(agent.notifications?.email ?? {}) },
     },
   })
 
@@ -570,7 +588,7 @@ export default function AgentStepper() {
 
             <p className={`mb-1.5 text-xs font-medium ${styles.stepMeta}`}>요약 범위</p>
             <div className="mb-4 flex gap-1.5">
-              {[['short', '초록만', '2줄'], ['medium', '본문', '4~5줄'], ['full', '전체', '5줄+']].map(([value, label, hint]) => {
+              {[['short', '초록만'], ['medium', '본문'], ['full', '전체']].map(([value, label]) => {
                 const active = agent.summaryLength === value
                 return (
                   <button
@@ -580,9 +598,6 @@ export default function AgentStepper() {
                       }`}
                   >
                     {label}
-                    <span className="ml-1" style={{ opacity: 0.6, fontSize: '10px' }}>
-                      ({hint})
-                    </span>
                   </button>
                 )
               })}
@@ -598,19 +613,37 @@ export default function AgentStepper() {
                 미리보기 — 알림 메시지 샘플
               </p>
               <p className={`text-xs font-medium ${styles.previewTitle}`}>
-                Attention Is All You Need: A Survey on Transformer Architectures
+                {PREVIEW_DATA[agent.summaryLength].title}
               </p>
               <p className={`mt-0.5 text-xs ${styles.previewMeta}`}>
-                Vaswani et al. · 2024.04.21 · LLM · Transformer · NEW
+                {PREVIEW_DATA[agent.summaryLength].meta}
               </p>
-              <p className={`mt-1 text-xs leading-relaxed ${styles.previewSummary}`}>
-                {SUMMARY_PREVIEW[agent.summaryLength]}
-              </p>
-              <p className={`mt-1.5 text-xs ${styles.previewFooter}`}>
-                인용 1,204 · 수집 2024.04.22 · arXiv ↗
-              </p>
-              <p className={`mt-1 text-xs font-medium ${styles.previewAccent}`}>
-                요약범위: {summaryLengthLabel}
+
+              <div className="mt-2">
+                <p className={`text-xs font-medium ${styles.previewAccent}`}>[에이전트 브리핑]</p>
+                <p className={`mt-0.5 text-xs leading-relaxed ${styles.previewSummary}`}>
+                  {PREVIEW_DATA[agent.summaryLength].briefing}
+                </p>
+              </div>
+
+              <div className="mt-2">
+                <p className={`text-xs font-medium ${styles.previewAccent}`}>[요약]</p>
+                <p className={`mt-0.5 text-xs leading-relaxed ${styles.previewSummary}`}>
+                  {PREVIEW_DATA[agent.summaryLength].summary}
+                </p>
+              </div>
+
+              {PREVIEW_DATA[agent.summaryLength].critique && (
+                <div className="mt-2">
+                  <p className={`text-xs font-medium ${styles.previewAccent}`}>[비판적 분석]</p>
+                  <p className={`mt-0.5 text-xs leading-relaxed ${styles.previewSummary}`}>
+                    {PREVIEW_DATA[agent.summaryLength].critique}
+                  </p>
+                </div>
+              )}
+
+              <p className={`mt-2 text-xs ${styles.previewFooter}`}>
+                🔖 북마크 저장 👍 유용했어요 👎 관련성이 낮아요
               </p>
             </div>
           </section>
@@ -648,7 +681,7 @@ export default function AgentStepper() {
               {[
                 { id: 'discord', label: 'Discord', desc: '서버 채널로 알림을 받습니다.' },
                 // { id: 'slack',   label: 'Slack',   desc: '워크스페이스 채널로 알림을 받습니다.' },
-                { id: 'email',   label: '이메일',  desc: '가입한 이메일 주소로 알림을 받습니다.' },
+                { id: 'email', label: '이메일', desc: '가입한 이메일 주소로 알림을 받습니다.' },
               ].map(({ id, label, desc }) => {
                 const ch = agent.notifications?.[id] ?? { connected: false, lastTestStatus: null, lastTestAt: null }
                 return (
@@ -661,30 +694,29 @@ export default function AgentStepper() {
                         <p className={`text-sm font-medium ${styles.channelName}`}>{label}</p>
                         <p className={`text-xs ${styles.channelDesc}`}>{desc}</p>
                         {id === 'discord' && ch.connected && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {discordChannels.length === 0 ? (
-                                <p className="text-xs text-gray-500">채널을 불러오는 중이거나 채널이 없습니다.</p>
-                              ) : (
-                                discordChannels.map((item) => {
-                                  const itemValue = String(item.channel_id)
-                                  const label = `${item.guild_name} / #${item.channel_name}`
-                                  const active = selectedDiscordChannels.includes(itemValue)
-                                  return (
-                                    <button
-                                      key={itemValue}
-                                      onClick={() => handleDiscordChannelChange(itemValue)}
-                                      disabled={loading || savingChannel}
-                                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                                        active ? styles.filterBtnActive : styles.filterBtnInactive
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {discordChannels.length === 0 ? (
+                              <p className="text-xs text-gray-500">채널을 불러오는 중이거나 채널이 없습니다.</p>
+                            ) : (
+                              discordChannels.map((item) => {
+                                const itemValue = String(item.channel_id)
+                                const label = `${item.guild_name} / #${item.channel_name}`
+                                const active = selectedDiscordChannels.includes(itemValue)
+                                return (
+                                  <button
+                                    key={itemValue}
+                                    onClick={() => handleDiscordChannelChange(itemValue)}
+                                    disabled={loading || savingChannel}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${active ? styles.filterBtnActive : styles.filterBtnInactive
                                       } ${loading || savingChannel ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                      {label}
-                                      {active && <Check size={11} className="ml-1.5 inline-block" />}
-                                    </button>
-                                  )
-                                })
-                              )}
-                            </div>
+                                  >
+                                    {label}
+                                    {active && <Check size={11} className="ml-1.5 inline-block" />}
+                                  </button>
+                                )
+                              })
+                            )}
+                          </div>
                         )}
                         {/* #slack 주석처리 (Slack 채널 목록 렌더링)
                         {id === 'slack' && ch.connected && (

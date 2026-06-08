@@ -473,10 +473,9 @@ class PaperAgentRunner:
             score += 0.3
 
         if self._known_pdf_url(paper):
-            score += 3.0
             reasons.append("has_pdf")
         elif self._summary_mode() in {"body", "full"}:
-            score -= 2.0
+            score -= 100.0
             reasons.append("pdf_missing")
 
         return score, reasons

@@ -264,18 +264,19 @@ class NoticeService:
             import time as _time
             papers = []
             
-            # 각 키워드별로 논문 수집
-            for keyword in keywords_list[:3]:  # 최대 3개 키워드
-                keyword = keyword.strip()
-                if not keyword:
-                    continue
+            # 각 키워드별로 균등하게 논문 수집 (최대 5개 키워드)
+            import math
+            valid_keywords = [k.strip() for k in keywords_list if k.strip()][:5]
+            if not valid_keywords:
+                return []
                 
-                # 이미 충분히 수집했으면 다음 키워드 건너뜀
-                if len(papers) >= collect_count * 2:
-                    break
+            target_per_keyword = max(2, math.ceil((collect_count * 2) / len(valid_keywords)))
+            
+            for keyword in valid_keywords:
+                added_for_keyword = 0
                 
-                # 중복 방지 필터링을 고려하여 평소보다 3배 더 많이 수집 시도
-                limit_per_source = max(15, (collect_count * 3))
+                # 중복 방지 필터링을 고려하여 소스당 넉넉하게 요청
+                limit_per_source = max(10, target_per_keyword * 3)
                 
                 for source in sources:
                     try:
@@ -309,14 +310,18 @@ class NoticeService:
                                 continue
                                 
                             papers.append(p)
+                            added_for_keyword += 1
                             
-                            # 필요한 개수를 다 채웠으면 해당 키워드 중단
-                            if len(papers) >= collect_count * 2: # 여유있게 수집 후 나중에 자름
+                            # 이 키워드에 대해 필요한 개수를 채웠으면 중단
+                            if added_for_keyword >= target_per_keyword:
                                 break
                                 
                     except Exception as e:
                         print(f"({source}) {keyword} 수집 중 오류: {e}")
                         continue
+                        
+                    if added_for_keyword >= target_per_keyword:
+                        break
             
             # 중복 제거 및 정렬
             if papers and remove_duplicates and sort_papers_by_recency:

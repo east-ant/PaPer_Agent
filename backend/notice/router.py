@@ -85,11 +85,14 @@ async def run_immediate_collection(user_email, notification_id, keywords, source
     """
     백그라운드에서 즉시 논문 수집 및 발송 실행
     """
+    import asyncio
     try:
         logger.info(f"🚀 [Background] 즉시 수집 시작 ({user_email})")
         
         # 논문 수집 (중복 필터링 포함)
-        papers = NoticeService.collect_papers(
+        # 시간 소요가 큰 동기 함수이므로 메인 이벤트 루프 블로킹 방지를 위해 스레드풀로 오프로드
+        papers = await asyncio.to_thread(
+            NoticeService.collect_papers,
             keywords, sources, collect_count, 
             user_email=user_email, 
             language=language, 
